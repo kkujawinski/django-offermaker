@@ -1,0 +1,4 @@
+.project
+.pydevproject
+dist
+django_offer_maker.egg-info
