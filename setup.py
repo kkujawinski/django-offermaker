@@ -17,6 +17,10 @@ setup(
     url='http://www.example.com/',
     author='Your Name',
     author_email='kamil@kujawinski.net',
+    tests_require=[
+        'unittest2',
+    ],
+    test_suite="tests",
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',
