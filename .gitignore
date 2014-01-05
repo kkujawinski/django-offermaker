@@ -4,3 +4,4 @@
 *.pyc
 dist
 django_offer_maker.egg-info
+unittest*.egg
