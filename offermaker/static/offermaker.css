@@ -1,0 +1,8 @@
+select option[value=''] {
+    color: #CCC;
+}
+
+option.om-not-available {
+    color: #999;
+    background-color: #EEE;
+}

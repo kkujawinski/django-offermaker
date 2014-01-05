@@ -1,13 +1,87 @@
 # coding=utf-8
-from __builtin__ import classmethod
-from collections import defaultdict
-from copy import deepcopy
+from copy import deepcopy, copy
 
 __author__ = 'kamil'
 
 
 class NoMatchingVariantsException(Exception):
     pass
+
+
+class Range(tuple):
+
+    def __new__(cls, *args):
+        if isinstance(args[0], (tuple, list)):
+            Range._validate_range_restriction(args[0])
+            return tuple.__new__(cls, args[0])
+        else:
+            Range._validate_range_restriction(args)
+            return tuple.__new__(cls, args)
+
+
+    @staticmethod
+    def _validate_range_restriction(restriction):
+        if len(restriction) != 2:
+            raise Exception(u"Range restriction must be two element tuple, but %s isn't" % str(restriction))
+        else:
+            restriction_is_none = [restriction[0] is None, restriction[1] is None]
+            if all(restriction_is_none):
+                # Empty range restriction, ex. sum of half limited restrictions
+                pass
+            elif not any(restriction_is_none):
+                if not Restriction.has_restriction_the_same_types(restriction):
+                    raise Exception(u"Both side of range restriction must have same type, "
+                                    u"but %s isn't" % str(restriction))
+                if restriction[0] > restriction[1]:
+                    raise Exception(u"Left side must smaller the right in range restriction, "
+                                    u"but %s isn't" % str(restriction))
+
+    @staticmethod
+    def first_item_cmp(a, b):
+        # None on the first position means minus infinity
+        if a is None and b is not None:
+            return -1
+        elif b is None and a is not None:
+            return 1
+        return cmp(a, b)
+
+    @staticmethod
+    def second_item_cmp(a, b):
+        # None on the second position means minus infinity
+        if a is None and b is not None:
+            return 1
+        elif b is None and a is not None:
+            return -1
+        return cmp(a, b)
+
+    @staticmethod
+    def range_cmp(a, b):
+        first_cmp = Range.first_item_cmp(a[0], b[0])
+        if first_cmp == 0:
+            return Range.second_item_cmp(a[1], b[1])
+        else:
+            return first_cmp
+
+    @staticmethod
+    def sets_sum(sets):
+        if not sets:
+            yield sets
+            return
+
+        sets = sorted(sets, cmp=Range.range_cmp)
+        saved = list(sets[0])
+        for st, en in sets[1:]:
+            if Range.second_item_cmp(st, saved[1]) <= 0:
+                saved[1] = saved[1] if Range.second_item_cmp(saved[1], en) == 1 else en
+            else:
+                yield tuple(saved)
+                saved[0] = st
+                saved[1] = en
+        yield tuple(saved)
+
+    @staticmethod
+    def sets_product(sets):
+        return [(1, 2)]
 
 
 class RestrictionSet(dict):
@@ -39,41 +113,22 @@ class Restriction(object):
             raise Exception(u"Empty restrictions is not allowed, but it's defined for %s" % field)
 
         if isinstance(restriction, tuple):
-            Restriction._validate_range_restriction(restriction)
-            self.ranges = frozenset([restriction])
+            self.ranges = frozenset([Range(restriction)])
         elif isinstance(restriction, (list, set, frozenset)):
             list_of_tuples = [isinstance(r, tuple) for r in restriction]
             if any(list_of_tuples) and not all(list_of_tuples):
                 raise Exception(u"Can't mix range restriction with items restriction, unlike %s" % str(restriction))
             if all(list_of_tuples):
-                [Restriction._validate_range_restriction(r) for r in restriction]
-                self.ranges = frozenset(restriction)
+                self.ranges = frozenset(Range(x) for x in restriction)
             else:
-                if not Restriction._has_restriction_the_same_types(restriction):
+                if not Restriction.has_restriction_the_same_types(restriction):
                     raise Exception(u"All items in restriction must have same type, but %s isn't" % str(restriction))
                 self.items = frozenset(restriction)
         else:
             self.fixed = restriction
 
     @staticmethod
-    def _validate_range_restriction(restriction):
-        if len(restriction) != 2:
-            raise Exception(u"Range restriction must be two element tuple, but %s isn't" % str(restriction))
-        else:
-            restriction_is_none = [restriction[0] is None, restriction[1] is None]
-            if all(restriction_is_none):
-                # Empty range restriction, ex. sum of half limited restrictions
-                pass
-            elif not any(restriction_is_none):
-                if not Restriction._has_restriction_the_same_types(restriction):
-                    raise Exception(u"Both side of range restriction must have same type, "
-                                    u"but %s isn't" % str(restriction))
-                if restriction[0] > restriction[1]:
-                    raise Exception(u"Left side must smaller the right in range restriction, "
-                                    u"but %s isn't" % str(restriction))
-
-    @staticmethod
-    def _has_restriction_the_same_types(restriction):
+    def has_restriction_the_same_types(restriction):
         types = set([type(r) for r in restriction])
         return len(types) <= 1
 
@@ -92,46 +147,6 @@ class Restriction(object):
                 return False
         return True
 
-    @staticmethod
-    def _merge_range_sets(sets):
-        def first_item_cmp(a, b):
-            # None on the first position means minus infinity
-            if a is None and b is not None:
-                return -1
-            elif b is None and a is not None:
-                return 1
-            return cmp(a, b)
-
-        def second_item_cmp(a, b):
-            # None on the second position means minus infinity
-            if a is None and b is not None:
-                return 1
-            elif b is None and a is not None:
-                return -1
-            return cmp(a, b)
-
-        def range_cmp(a, b):
-            first_cmp = first_item_cmp(a[0], b[0])
-            if first_cmp == 0:
-                return second_item_cmp(a[1], b[1])
-            else:
-                return first_cmp
-
-        if not sets:
-            yield sets
-            return
-
-        sets = sorted(sets, cmp=range_cmp)
-        saved = list(sets[0])
-        for st, en in sets[1:]:
-            if second_item_cmp(st, saved[1]) <= 0:
-                saved[1] = saved[1] if second_item_cmp(saved[1], en) == 1 else en
-            else:
-                yield tuple(saved)
-                saved[0] = st
-                saved[1] = en
-        yield tuple(saved)
-
     def __add__(self, other):
         if self.field != other.field:
             raise Exception(u"You can add only restrictions of the same field, you trying "
@@ -143,7 +158,7 @@ class Restriction(object):
         # if one is range restriction, both are
         if self.ranges:
             ranges = self.ranges.union(other.ranges)
-            ranges = frozenset(Restriction._merge_range_sets(ranges))
+            ranges = frozenset(Range.sets_sum(ranges))
             output = Restriction(self.field, ranges)
             return output
 
@@ -155,6 +170,28 @@ class Restriction(object):
         other_items = other.items or frozenset([other.fixed])
 
         return Restriction(self.field, self_items.union(other_items))
+
+    def __mul__(self, other):
+        if self.field != other.field:
+            raise Exception(u"You can multiply only restrictions of the same field, you trying "
+                            u"multiply %s with %s" % (self.field, other.field))
+        if (self.ranges and not other.ranges) or (not self.ranges and other.ranges):
+            raise Exception(u"Range restriction can be multiplied only to other range restriction, "
+                            u"unlike in '%s'" % self.field)
+
+        if self.ranges:
+            ranges = self.ranges.union(other.ranges)
+            ranges = frozenset(Range.sets_product(ranges))
+            output = Restriction(self.field, ranges)
+            return output
+
+        self_items = frozenset([self.fixed]) if self.fixed else self.items
+        other_items = frozenset([other.fixed]) if other.fixed else other.items
+        output_other = self_items.intersection(other_items)
+        if len(output_other) == 1:
+            return Restriction(self.field, iter(output_other).next())
+        else:
+            return Restriction(self.field, output_other)
 
     def __eq__(self, other):
         if self.items is not None and other.items is not None:
@@ -184,6 +221,7 @@ class OfferMakerCore(object):
         self.values = {}
         self.params_to_variants_groups = {}
         self.variants_groups_to_params = {}
+        self.full_matching_variants = {}
         self._configure(deepcopy(offer))
 
     def get_form_response(self, values, initiator=None):
@@ -193,6 +231,32 @@ class OfferMakerCore(object):
         self.offer = OfferMakerCore.parse_offer(offer)
         main_params, self.variants_groups_to_params = OfferMakerCore.get_variants_groups(self.offer)
         self.variants_groups_to_params['MAIN'] = main_params
+        self.full_matching_variants = OfferMakerCore.get_matching_variants(self.offer, {})
+
+    def _get_single_value_change(self, form_values, output):
+        """
+        Returns list of possible values if each input param would be changed
+        """
+        form_values = copy(form_values)
+        fixed_values = {k: v.fixed for k, v in output.items() if v.fixed is not None}
+        form_values.update(fixed_values)
+
+        full_outputs = {}
+        for param in form_values:
+            temp_form_values = copy(form_values)
+            del temp_form_values[param]
+
+            param_matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, temp_form_values))
+            if param_matching_groups != set(self.variants_groups_to_params.keys()):
+                continue
+
+            param_matching_variants = OfferMakerCore.get_matching_variants(self.offer, temp_form_values)
+            if not param_matching_variants:
+                continue
+
+            temp_full_output = OfferMakerCore.sum_grouped_restrictions(param_matching_variants)
+            full_outputs[param] = {k: v for k, v in temp_full_output.items() if k in form_values}
+        return full_outputs
 
     def _process_form_values(self, form_values):
         form_values = OfferMakerCore.clean_form_values(self.form(), form_values)
@@ -203,7 +267,12 @@ class OfferMakerCore(object):
             raise NoMatchingVariantsException()
 
         matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
-        return OfferMakerCore.sum_restrictions(matching_variants)
+        if not matching_variants:
+            raise NoMatchingVariantsException()
+
+        output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
+        full_outputs = self._get_single_value_change(form_values, output)
+        return self.sum_restrictions([output] + full_outputs.values())
 
     @staticmethod
     def parse_offer(the_variant, top=True):
@@ -256,7 +325,7 @@ class OfferMakerCore(object):
     @staticmethod
     def clean_form_values(form_object, form_values):
         new_form_values = {}
-        for field_name in (f for f, v in form_values.items() if v):
+        for field_name in (f for f, v in form_values.items() if v and f in form_object.fields):
             if field_name[-2:] == '[]':
                 input_field_name = field_name[:-2]
                 value = form_values.getlist(field_name)
@@ -305,13 +374,11 @@ class OfferMakerCore(object):
         new_variants = []
         for group in the_variant['variants']:
             new_group = []
-
             for variant in group:
                 new_variant = OfferMakerCore.get_matching_variants(variant, values)
                 if not new_variant:
                     continue
                 new_group.append(new_variant)
-
             if not any(new_group):
                 return
             new_variants.append(new_group)
@@ -320,8 +387,41 @@ class OfferMakerCore(object):
         return output
 
     @staticmethod
-    def sum_restrictions(variants):
-        return sum(OfferMakerCore.get_all_subparams(variants))
+    def sum_grouped_restrictions(variants):
+        grouped_subparams = OfferMakerCore.get_grouped_subparams(variants)
+        output = {}
+        for restriction_group in OfferMakerCore.get_restrictions_groups(grouped_subparams):
+            for name, restriction in restriction_group.items():
+                if name in output:
+                    output[name] *= restriction
+                else:
+                    output[name] = restriction
+        return output
+
+    @staticmethod
+    def sum_restrictions(restrictions_groups):
+        output = {}
+        for restrictions in restrictions_groups:
+            for name, restriction in restrictions.items():
+                if name in output:
+                    output[name] += restriction
+                else:
+                    output[name] = restriction
+        return output
+
+    @staticmethod
+    def get_restrictions_groups(grouped_subparams):
+        for x in grouped_subparams:
+            yield sum(x)
+
+    @staticmethod
+    def get_grouped_subparams(the_variant):
+        if the_variant is None:
+            import pdb; pdb.set_trace()
+        yield (the_variant['params'],)
+        if 'variants' in the_variant:
+            for group in the_variant['variants']:
+                yield (params for variant in group for params in OfferMakerCore.get_all_subparams(variant))
 
     @staticmethod
     def get_all_subparams(the_variant):
@@ -331,6 +431,7 @@ class OfferMakerCore(object):
                 for variant in group:
                     for params in OfferMakerCore.get_all_subparams(variant):
                         yield params
+
 
 #1. Dla wszystkich grup wyznaczamy listę parametrów, które w nich obowiązują (variants_groups)
 #2. Dla każdego z parametrów w requeście wyznaczamy listę grup, które

@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 setup(
     name='django-offer-maker',
     version='0.1',
-    packages=['kkuj'],
+    packages=['offermaker'],
     include_package_data=True,
     license='BSD License',  # example license
     description='A simple Django app to conduct dynamic multi variantable forms.',

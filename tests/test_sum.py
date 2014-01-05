@@ -1,6 +1,6 @@
 __author__ = 'kamil'
 from unittest2 import TestCase
-from kkuj.offermaker.core import Restriction
+from offermaker.core import Restriction
 
 
 class OfferMakerCoreSumTest(TestCase):

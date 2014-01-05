@@ -1,13 +1,8 @@
 import json
 
-from django import forms
 from django.http import HttpResponse
 
-from kkuj.offermaker.core import OfferMakerCore, NoMatchingVariantsException
-
-
-class OfferMakerForm(forms.Form):
-    pass
+from offermaker.core import OfferMakerCore, NoMatchingVariantsException
 
 
 class OfferMakerDispatcher(object):
