@@ -238,7 +238,7 @@ class OfferMakerCore(object):
         Returns list of possible values if each input param would be changed
         """
         form_values = copy(form_values)
-        fixed_values = {k: v.fixed for k, v in output.items() if v.fixed is not None}
+        fixed_values = dict((k, v.fixed) for k, v in output.items() if v.fixed is not None)
         form_values.update(fixed_values)
 
         full_outputs = {}
@@ -255,7 +255,7 @@ class OfferMakerCore(object):
                 continue
 
             temp_full_output = OfferMakerCore.sum_grouped_restrictions(param_matching_variants)
-            full_outputs[param] = {k: v for k, v in temp_full_output.items() if k in form_values}
+            full_outputs[param] = dict((k, v) for k, v in temp_full_output.items() if k in form_values)
         return full_outputs
 
     def _process_form_values(self, form_values):
