@@ -7,6 +7,8 @@ __author__ = 'kamil'
 class NoMatchingVariantsException(Exception):
     pass
 
+class RangeException(Exception):
+    pass
 
 class Range(tuple):
 
@@ -22,7 +24,7 @@ class Range(tuple):
     @staticmethod
     def _validate_range_restriction(restriction):
         if len(restriction) != 2:
-            raise Exception(u"Range restriction must be two element tuple, but %s isn't" % str(restriction))
+            raise RangeException(u"Range restriction must be two element tuple, but %s isn't" % str(restriction))
         else:
             restriction_is_none = [restriction[0] is None, restriction[1] is None]
             if all(restriction_is_none):
@@ -30,11 +32,11 @@ class Range(tuple):
                 pass
             elif not any(restriction_is_none):
                 if not Restriction.has_restriction_the_same_types(restriction):
-                    raise Exception(u"Both side of range restriction must have same type, "
-                                    u"but %s isn't" % str(restriction))
+                    raise RangeException(u"Both side of range restriction must have same type, "
+                                         u"but %s isn't" % str(restriction))
                 if restriction[0] > restriction[1]:
-                    raise Exception(u"Left side must smaller the right in range restriction, "
-                                    u"but %s isn't" % str(restriction))
+                    raise RangeException(u"Left side must smaller the right in range restriction, "
+                                         u"but %s isn't" % str(restriction))
 
     @staticmethod
     def first_item_cmp(a, b):
@@ -79,9 +81,26 @@ class Range(tuple):
                 saved[1] = en
         yield tuple(saved)
 
+    def __mul__(self, other):
+        first_cmp = Range.first_item_cmp(self[0], other[0])
+        second_cmp = Range.second_item_cmp(self[1], other[1])
+        output = (self[0] if first_cmp > 0 else other[0], # max(self[0], other[0])
+                  self[1] if second_cmp < 0 else other[1]) # min(self[1], other[1])
+        try:
+            Range._validate_range_restriction(output)
+            return output
+        except RangeException:
+            return None
+
     @staticmethod
     def sets_product(sets):
-        return [(1, 2)]
+        def sets_product_reduce(x, y):
+            for i in x:
+                for j in y:
+                    item = i * j
+                    if item is not None:
+                        yield item
+        return reduce(sets_product_reduce, sets)
 
 
 class RestrictionSet(dict):
