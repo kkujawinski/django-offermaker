@@ -190,7 +190,7 @@
         var handler = function(event) {
             if (event && event.target) {
                 var $target = $(event.target);
-                if (!are_restrictions_obeyed($target)) {
+                if ($target.val() != '' && !are_restrictions_obeyed($target)) {
                     if (confirm('Are you sure to break current variant?')) {
                         var break_current_variant = true;
                         var event_initiator = $target.attr('name')
