@@ -15,7 +15,10 @@ class OfferMakerDispatcher(object):
 
     def _offermaker_field_descriptions(self, request):
         try:
-            matched_variants = self.offer_core.get_form_response(request.GET)
+            form_response_fn = self.offer_core.get_form_response
+            matched_variants = form_response_fn(request.GET,
+                                                initiator=request.GET.get('__initiator__'),
+                                                break_variant=request.GET.get('__break_current_variant__') == 'true')
             for field, restriction in matched_variants.items():
                 field_description = {'field': field}
                 if restriction.items:

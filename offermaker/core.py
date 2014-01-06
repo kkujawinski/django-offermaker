@@ -243,8 +243,34 @@ class OfferMakerCore(object):
         self.full_matching_variants = {}
         self._configure(deepcopy(offer))
 
-    def get_form_response(self, values, initiator=None):
-        return self._process_form_values(values)
+    def get_form_response(self, values, initiator=None, break_variant=False):
+        form_values = OfferMakerCore.clean_form_values(self.form(), values)
+        original_form_values = copy(form_values)
+
+        if break_variant:
+            form_values = dict((k, v) for k, v in form_values.items() if k == initiator)
+
+        if not OfferMakerCore.do_variant_params_match(self.offer['params'], form_values):
+            raise NoMatchingVariantsException()
+        matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, form_values))
+        if matching_groups != set(self.variants_groups_to_params.keys()):
+            raise NoMatchingVariantsException()
+
+        matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
+        if not matching_variants:
+            raise NoMatchingVariantsException()
+
+        output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
+
+        if break_variant:
+            for field, value in ((f, v) for f, v in original_form_values.items() if f != initiator):
+                if value != '' and output[field].match(value):
+                    form_values[field] = original_form_values[field]
+                    matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
+                    output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
+
+        full_outputs = self._get_single_value_change(form_values, output)
+        return self.sum_restrictions([output] + full_outputs.values())
 
     def _configure(self, offer):
         self.offer = OfferMakerCore.parse_offer(offer)
@@ -276,22 +302,6 @@ class OfferMakerCore(object):
             temp_full_output = OfferMakerCore.sum_grouped_restrictions(param_matching_variants)
             full_outputs[param] = dict((k, v) for k, v in temp_full_output.items() if k in form_values)
         return full_outputs
-
-    def _process_form_values(self, form_values):
-        form_values = OfferMakerCore.clean_form_values(self.form(), form_values)
-        if not OfferMakerCore.do_variant_params_match(self.offer['params'], form_values):
-            raise NoMatchingVariantsException()
-        matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, form_values))
-        if matching_groups != set(self.variants_groups_to_params.keys()):
-            raise NoMatchingVariantsException()
-
-        matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
-        if not matching_variants:
-            raise NoMatchingVariantsException()
-
-        output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
-        full_outputs = self._get_single_value_change(form_values, output)
-        return self.sum_restrictions([output] + full_outputs.values())
 
     @staticmethod
     def parse_offer(the_variant, top=True):

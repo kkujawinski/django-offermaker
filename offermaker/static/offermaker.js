@@ -113,7 +113,7 @@
             }
 
         };
-        var handle_field = function(field_data) {
+        var handle_field = function(field_data, break_current_variant) {
             if (field_data.field != '__all__') {
                 $field = $(':input[name=' + field_data.field + ']');
                 var value = field_data.value || field_data.fixed;
@@ -128,7 +128,11 @@
                 } else {
                     handle_text_field($field, field_data);
                 }
-
+                if (break_current_variant) {
+                    if (!are_restrictions_obeyed($field)) {
+                        $field.val('');
+                    }
+                }
             }
         };
         var save_copies = function() {
@@ -188,12 +192,14 @@
                 var $target = $(event.target);
                 if (!are_restrictions_obeyed($target)) {
                     if (confirm('Are you sure to break current variant?')) {
-                        break_current_variant = true;
+                        var break_current_variant = true;
+                        var event_initiator = $target.attr('name')
                     }
                 }
             }
             var prepared_data = prepare_data();
             prepared_data['__break_current_variant__'] = break_current_variant;
+            prepared_data['__initiator__'] = event_initiator;
             global_reset();
             loader_on();
             $.ajax({
@@ -216,7 +222,7 @@
                         $inputs.attr('disabled', false);
                         restrictions_reset();
                         for (var i = 0; i < data.length; i++) {
-                            handle_field(data[i]);
+                            handle_field(data[i], break_current_variant);
                         }
                     }
                 }],
