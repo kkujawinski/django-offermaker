@@ -113,11 +113,11 @@
             }
 
         };
-        var handle_field = function(field_data, break_current_variant) {
+        var handle_field = function(field_data, break_current_variant, target_empty) {
             if (field_data.field != '__all__') {
                 $field = $(':input[name=' + field_data.field + ']');
                 var value = field_data.value || field_data.fixed;
-                if (value !== undefined) {
+                if (value !== undefined && !target_empty) {
                     $field.val(value);
                 }
                 if (field_data.readonly !== undefined) {
@@ -190,6 +190,7 @@
         var handler = function(event) {
             if (event && event.target) {
                 var $target = $(event.target);
+                var target_empty = $target.val() === ""
                 if ($target.val() != '' && !are_restrictions_obeyed($target)) {
                     if (confirm('Are you sure to break current variant?')) {
                         var break_current_variant = true;
@@ -222,7 +223,7 @@
                         $inputs.attr('disabled', false);
                         restrictions_reset();
                         for (var i = 0; i < data.length; i++) {
-                            handle_field(data[i], break_current_variant);
+                            handle_field(data[i], break_current_variant, target_empty);
                         }
                     }
                 }],
