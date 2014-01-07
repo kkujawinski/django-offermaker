@@ -19,7 +19,9 @@
             var $tooltip = $('<span class="input-group-addon glyphicon glyphicon-info-sign" title="' + msg + '"/>');
             $field.parent().append($tooltip);
             $(function() {
-                $tooltip.tooltip({'placement': 'bottom', 'container': 'body'});
+                if ($tooltip.tooltip) {
+                    $tooltip.tooltip({'placement': 'bottom', 'container': 'body'});
+                }
             });
             return $tooltip
         };
@@ -48,6 +50,26 @@
             'RANGE_SEP': ' ',
             'ITEMS_SEP': ' ',
         }
+
+        var _decode_items = function(encoded) {
+            return encoded.split(CONST.ITEMS_SEP);
+        };
+        var _encode_items = function(decoded) {
+            return decoded.join(CONST.ITEMS_SEP)
+        };
+        var _decode_ranges = function(encoded) {
+            var ranges = encoded.split(CONST.RANGE_SEP);
+            var output = [];
+            for (var i = 0; i < ranges.length; i++) {
+                output[i] = ranges[i].split(CONST.RANGE_HYP);
+            }
+            return output;
+        };
+        var _encode_ranges = function(decoded) {
+            return $.map(decoded, function(x) {
+                return vsprintf('%1$s' + CONST.RANGE_HYP + '%2$s', x);
+            }).join(CONST.RANGE_SEP);
+        };
 
         var loader_on = function() {
             if ($global_error) {
@@ -91,11 +113,11 @@
             var ranges = field_data.ranges;
             if (items !== undefined && items.length == 1) {
                 var $tooltip = tooltip_factory($field, msg_factory('INFO_FIXED', items[0]));
-                $field.attr('om-restriction-items', items.join(CONST.ITEMS_SEP));
+                $field.attr('om-restriction-items', _encode_items(items));
             } else if (items !== undefined && items.length > 1) {
                 var items_str = iteration_str(items);
                 var $tooltip = tooltip_factory($field, msg_factory('INFO_ITEMS', items_str));
-                $field.attr('om-restriction-items', items.join(CONST.ITEMS_SEP));
+                $field.attr('om-restriction-items', _encode_items(items));
             } else if (ranges !== undefined) {
                 var ranges_str = iteration_str($.map(ranges, function(x) {
                     if (x[0] === undefined) { return msg_factory('RANGE_left', x); }
@@ -103,15 +125,11 @@
                     else { return msg_factory('RANGE_both', x); }
                 }));
                 var $tooltip = tooltip_factory($field, msg_factory('INFO_RANGES', ranges_str));
-                var ranges_attr = $.map(ranges, function(x) {
-                    return vsprintf('%1$s' + CONST.RANGE_HYP + '%2$s', x);
-                }).join(CONST.RANGE_SEP);
-                $field.attr('om-restriction-ranges', ranges_attr);
+                $field.attr('om-restriction-ranges', _encode_ranges(ranges));
             }
             if ($tooltip !== undefined) {
                 $tooltip.addClass('om-tooltip');
             }
-
         };
         var handle_field = function(field_data, break_current_variant, target_empty) {
             if (field_data.field != '__all__') {
@@ -135,12 +153,6 @@
                 }
             }
         };
-        var save_copies = function() {
-            $inputs.each(function() {
-                $input = $(this);
-                $input.attr('om-old-value', $input.val());
-            });
-        };
         var global_reset = function() {
             $('.om-global-error').remove();
         }
@@ -148,6 +160,19 @@
             $('.om-not-available', $form).removeClass('om-not-available');
             $('.om-tooltip', $form).remove();
             break_current_variant = false;
+        };
+        var _ranges_match = function(ranges, val) {
+            var matched = false;
+            for (var i = 0; i < ranges.length; i++) {
+                var range = ranges[i]
+                if (range[0] === undefined || range[0] <= val) {
+                    if (range[1] === undefined || val <= range[1]) {
+                       matched = true;
+                       break;
+                    }
+                }
+            }
+            return matched
         };
         var are_restrictions_obeyed = function($target) {
             if ($target[0].tagName == 'SELECT') {
@@ -158,21 +183,28 @@
                 if (input_type == 'text' || input_type == 'number') {
                     val = $target.val();
                     if ($target.attr('om-restriction-items') && $target.attr('om-restriction-items') != '') {
-                        var items = $target.attr('om-restriction-items').split(CONST.ITEMS_SEP);
+                        var items = _decode_items($target.attr('om-restriction-items'));
                         return array_has(items, val) !== false;
                     } else if ($target.attr('om-restriction-ranges') && $target.attr('om-restriction-ranges') != '') {
-                        var ranges = $target.attr('om-restriction-ranges').split(CONST.RANGE_SEP);
-                        var ranges = $.map(ranges, function(x) { return x.split(CONST.RANGE_HYP) });
-                        var matched = false;
-                        for (var i = 0; i < ranges.length; i++) {
-                            if (ranges[0] === undefined || ranges[0] <= val) {
-                                if (ranges[1] === undefined || val <= ranges[1]) {
-                                   matched = true;
-                                   break;
-                                }
-                            }
-                        }
-                        return matched;
+                        var ranges = _decode_ranges($target.attr('om-restriction-ranges'));
+                        return _ranges_match(ranges, val);
+                    }
+                }
+            }
+            return true;
+        };
+        var are_init_restrictions_obeyed = function($target) {
+            if ($target[0].tagName == 'INPUT') {
+                var input_type = $target.attr('type').toLowerCase();
+                if (input_type == 'text' || input_type == 'number') {
+                    val = $target.val();
+                    if ($target.attr('om-init-restriction-items') && $target.attr('om-init-restriction-items') != '') {
+                        var items = _decode_items($target.attr('om-init-restriction-items'));
+                        return array_has(items, val) !== false;
+                    } else if ($target.attr('om-init-restriction-ranges')
+                                && $target.attr('om-init-restriction-ranges') != '') {
+                        var ranges = _decode_ranges($target.attr('om-init-restriction-ranges'));
+                        return _ranges_match(ranges, val);
                     }
                 }
             }
@@ -187,14 +219,19 @@
                 $global_error.addClass('om-global-error');
             }
         }
-        var handler = function(event) {
+        var handler = function(event, success_handler) {
+            if (success_handler === undefined) {
+                success_handler = function() {};
+            }
             if (event && event.target) {
                 var $target = $(event.target);
                 var target_empty = $target.val() === ""
                 if ($target.val() != '' && !are_restrictions_obeyed($target)) {
-                    if (confirm('Are you sure to break current variant?')) {
-                        var break_current_variant = true;
-                        var event_initiator = $target.attr('name')
+                    var event_initiator = $target.attr('name')
+                    if (are_init_restrictions_obeyed($target)) {
+                        if (confirm('Are you sure to break current variant?')) {
+                            var break_current_variant = true;
+                        }
                     }
                 }
             }
@@ -227,12 +264,26 @@
                         }
                     }
                 }],
-                complete: [loader_off, save_copies],
+                complete: [success_handler, loader_off],
                 timeout: 40000
             });
         };
-        $(function() { handler(); });
-        $inputs.change(handler);
+        $(function() {
+            handler(undefined, function() {
+                $inputs.each(function() {
+                    var $this = $(this);
+                    var restriction_items = $this.attr('om-restriction-items');
+                    if (restriction_items) {
+                        $this.attr('om-init-restriction-items', restriction_items);
+                    }
+                    var restriction_ranges = $this.attr('om-restriction-ranges');
+                    if (restriction_ranges) {
+                        $this.attr('om-init-restriction-ranges', restriction_ranges);
+                    }
+                });
+            });
+        });
+        $inputs.bind('keyup mouseup', handler);
 	};
 
     $.fn.offer_form = function(options) {
