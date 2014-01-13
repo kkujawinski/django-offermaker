@@ -283,7 +283,18 @@
                 });
             });
         });
-        $inputs.bind('keyup mouseup', handler);
+        var keyup_after_click_handler = function(change_handler) {
+            var keyup_occurred = false;
+            $inputs.bind('keyup mouseup', function(event) {
+                keyup_occurred = true;
+            });
+            $inputs.bind('change', function(event) {
+                if (keyup_occurred) {
+                    setTimeout(change_handler(event), 1);
+                }
+            });
+        };
+        keyup_after_click_handler(handler);
 	};
 
     $.fn.offer_form = function(options) {

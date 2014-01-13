@@ -7,8 +7,10 @@ __author__ = 'kamil'
 class NoMatchingVariantsException(Exception):
     pass
 
+
 class RangeException(Exception):
     pass
+
 
 class Range(tuple):
 
@@ -105,19 +107,27 @@ class Range(tuple):
 
 class RestrictionSet(dict):
 
+    omc = None
+
     def __radd__(self, other):
         if isinstance(other, int):
             return RestrictionSet(self)
         return self.__add__(other)
 
-    def __add__(self, other):
+    def __add__(self, other, omc=None):
         output = RestrictionSet(self)
         for field in other:
             if field in output:
                 output[field] += other[field]
+            elif omc is not None:
+                output[field] = omc.full_params.get(field, other[field])
             else:
                 output[field] = other[field]
         return output
+
+    @staticmethod
+    def sum(sets, omc):
+        pass
 
 
 class Restriction(object):
@@ -199,8 +209,7 @@ class Restriction(object):
                             u"unlike in '%s'" % self.field)
 
         if self.ranges:
-            ranges = self.ranges.union(other.ranges)
-            ranges = frozenset(Range.sets_product(ranges))
+            ranges = frozenset(Range.sets_product((self.ranges, other.ranges)))
             output = Restriction(self.field, ranges)
             return output
 
@@ -209,8 +218,10 @@ class Restriction(object):
         output_other = self_items.intersection(other_items)
         if len(output_other) == 1:
             return Restriction(self.field, iter(output_other).next())
-        else:
+        elif len(output_other) > 1:
             return Restriction(self.field, output_other)
+        else:
+            return None
 
     def __eq__(self, other):
         if self.items is not None and other.items is not None:
@@ -241,6 +252,7 @@ class OfferMakerCore(object):
         self.params_to_variants_groups = {}
         self.variants_groups_to_params = {}
         self.full_matching_variants = {}
+        self.full_params = {}
         self._configure(deepcopy(offer))
 
     def get_form_response(self, values, initiator=None, break_variant=False):
@@ -250,11 +262,11 @@ class OfferMakerCore(object):
         if break_variant:
             form_values = dict((k, v) for k, v in form_values.items() if k == initiator)
 
-        if not OfferMakerCore.do_variant_params_match(self.offer['params'], form_values):
-            raise NoMatchingVariantsException()
-        matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, form_values))
-        if matching_groups != set(self.variants_groups_to_params.keys()):
-            raise NoMatchingVariantsException()
+        # if not OfferMakerCore.do_variant_params_match(self.offer['params'], form_values):
+        #     raise NoMatchingVariantsException()
+        # matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, form_values))
+        # if matching_groups != set(self.variants_groups_to_params.keys()):
+        #     raise NoMatchingVariantsException()
 
         matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
         if not matching_variants:
@@ -277,6 +289,8 @@ class OfferMakerCore(object):
         main_params, self.variants_groups_to_params = OfferMakerCore.get_variants_groups(self.offer)
         self.variants_groups_to_params['MAIN'] = main_params
         self.full_matching_variants = OfferMakerCore.get_matching_variants(self.offer, {})
+        groups = OfferMakerCore.get_flatten_groups(self.full_matching_variants)
+        self.full_params = sum([sum(x) or RestrictionSet() for x in groups])
 
     def _get_single_value_change(self, form_values, output):
         """
@@ -291,9 +305,9 @@ class OfferMakerCore(object):
             temp_form_values = copy(form_values)
             del temp_form_values[param]
 
-            param_matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, temp_form_values))
-            if param_matching_groups != set(self.variants_groups_to_params.keys()):
-                continue
+            # param_matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, temp_form_values))
+            # if param_matching_groups != set(self.variants_groups_to_params.keys()):
+            #     continue
 
             param_matching_variants = OfferMakerCore.get_matching_variants(self.offer, temp_form_values)
             if not param_matching_variants:
@@ -375,19 +389,19 @@ class OfferMakerCore(object):
                     return False
         return True
 
-    @staticmethod
-    def get_matching_groups(the_variant, values):
-        """
-        Returns all match groups (if one of group doesn't match anymore, it means that value was wrong)
-        """
-        output = []
-        for i, group in enumerate(the_variant['variants']):
-            if any((OfferMakerCore.do_variant_params_match(variant['params'], values) for variant in group)):
-                output.append(str(i))
-            for variant in group:
-                if 'variants' in variant:
-                    output.extend(['%d-%s' % (i, vg) for vg in OfferMakerCore.get_matching_groups(variant, values)])
-        return output
+    # @staticmethod
+    # def get_matching_groups(the_variant, values):
+    #     """
+    #     Returns all match groups (if one of group doesn't match anymore, it means that value was wrong)
+    #     """
+    #     output = []
+    #     for i, group in enumerate(the_variant['variants']):
+    #         if any((OfferMakerCore.do_variant_params_match(variant['params'], values) for variant in group)):
+    #             output.append(str(i))
+    #         for variant in group:
+    #             if 'variants' in variant:
+    #                 output.extend(['%d-%s' % (i, vg) for vg in OfferMakerCore.get_matching_groups(variant, values)])
+    #     return output
 
     @staticmethod
     def get_matching_variants(the_variant, values):
@@ -417,15 +431,38 @@ class OfferMakerCore(object):
 
     @staticmethod
     def sum_grouped_restrictions(variants):
-        grouped_subparams = OfferMakerCore.get_grouped_subparams(variants)
-        output = {}
-        for restriction_group in OfferMakerCore.get_restrictions_groups(grouped_subparams):
-            for name, restriction in restriction_group.items():
-                if name in output:
-                    output[name] *= restriction
-                else:
-                    output[name] = restriction
-        return output
+        groups = OfferMakerCore.get_flatten_groups(variants)
+        summarized_groups = OfferMakerCore.get_summarized_groups(groups)
+
+        # suma variantów
+        # sum([a=(1, 3), b=1], [b=2]) = [a=(1,3), b=(1,2)],
+        # a powinno być sum([a=(1, 3), b=1], [b=2]) = [a=(1,2,3), b=(1,2)],
+
+        for sg in (x for x in summarized_groups if x):
+            for i, g in enumerate(groups):
+                new_g = OfferMakerCore.restrict_group_by_summarized(copy(g), sg)
+                if len(new_g) != len(g):
+                    new_g = OfferMakerCore.restrict_group_by_summarized(copy(g), sg)
+                    groups[i] = new_g
+                    summarized_groups.append(sum(groups[i]) or RestrictionSet())
+
+        return sum([sum(x) or RestrictionSet() for x in groups])  # należy zsumować taką listę
+
+    @staticmethod
+    def restrict_group_by_summarized(group, summarized_group):
+        # czy modyfikujemy varianty gdy pasują
+        out = [OfferMakerCore._variant_restrict_by_summarized(v, summarized_group) for v in group]
+        return [x for x in out if x is not None]
+
+    @staticmethod
+    def _variant_restrict_by_summarized(variant, summarized_group):
+        for key, restriction in summarized_group.items():
+            if key in variant:
+                product = variant[key] * restriction
+                if product is None:
+                    return None
+                variant[key] = product
+        return variant
 
     @staticmethod
     def sum_restrictions(restrictions_groups):
@@ -439,27 +476,36 @@ class OfferMakerCore(object):
         return output
 
     @staticmethod
-    def get_restrictions_groups(grouped_subparams):
-        for x in grouped_subparams:
-            yield sum(x)
+    def get_summarized_groups(grouped_subparams):
+        return [sum(x) or {} for x in grouped_subparams]
 
     @staticmethod
-    def get_grouped_subparams(the_variant):
-        if the_variant is None:
-            import pdb; pdb.set_trace()
-        yield (the_variant['params'],)
+    def get_flatten_groups(the_variant):
+        output = [[RestrictionSet(the_variant['params'])]]
         if 'variants' in the_variant:
             for group in the_variant['variants']:
-                yield (params for variant in group for params in OfferMakerCore.get_all_subparams(variant))
+                output_group = []
+                for variant in group:
+                    for subvariant in OfferMakerCore.get_flatten_variant(variant):
+                        output_group.append(RestrictionSet(subvariant))
+                output.append(output_group)
+        return output
 
     @staticmethod
-    def get_all_subparams(the_variant):
-        yield the_variant['params']
+    def get_flatten_variant(the_variant):
+        the_params = the_variant['params']
+        yielded = False
         if 'variants' in the_variant:
             for group in the_variant['variants']:
                 for variant in group:
-                    for params in OfferMakerCore.get_all_subparams(variant):
-                        yield params
+                    for params in OfferMakerCore.get_flatten_variant(variant):
+                        the_params_copy = copy(the_params)
+                        the_params_copy.update(params)
+                        yield the_params_copy
+                        yielded = True
+        if not yielded:
+            yield copy(the_params)
+
 
 
 #1. Dla wszystkich grup wyznaczamy listę parametrów, które w nich obowiązują (variants_groups)
