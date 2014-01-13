@@ -27,7 +27,6 @@
         };
         var msgs = options.msgs || {
             'NO_VARIANTS': 'No matching variants',
-            'INFO_RANGES': 'Available ranges are: %s.',
             'INFO_ITEMS': 'Available values are: %s.',
             'INFO_FIXED': 'Only available value is %s.',
             'RANGE_left': 'to %2$s',
@@ -122,9 +121,10 @@
                 var ranges_str = iteration_str($.map(ranges, function(x) {
                     if (x[0] === undefined) { return msg_factory('RANGE_left', x); }
                     if (x[1] === undefined) { return msg_factory('RANGE_right', x); }
+                    if (x[0] === x[1] ) { return x[0] }
                     else { return msg_factory('RANGE_both', x); }
                 }));
-                var $tooltip = tooltip_factory($field, msg_factory('INFO_RANGES', ranges_str));
+                var $tooltip = tooltip_factory($field, msg_factory('INFO_ITEMS', ranges_str));
                 $field.attr('om-restriction-ranges', _encode_ranges(ranges));
             }
             if ($tooltip !== undefined) {

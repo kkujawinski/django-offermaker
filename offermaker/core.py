@@ -1,5 +1,6 @@
 # coding=utf-8
 from copy import deepcopy, copy
+from __builtin__ import enumerate
 
 __author__ = 'kamil'
 
@@ -21,7 +22,6 @@ class Range(tuple):
         else:
             Range._validate_range_restriction(args)
             return tuple.__new__(cls, args)
-
 
     @staticmethod
     def _validate_range_restriction(restriction):
@@ -155,10 +155,14 @@ class Restriction(object):
                 self.items = frozenset(restriction)
         else:
             self.fixed = restriction
+        if self.ranges and len(self.ranges) == 1:
+            x, y = iter(self.ranges).next()
+            if x == y:
+                self.fixed = x
 
     @staticmethod
     def has_restriction_the_same_types(restriction):
-        types = set([type(r) for r in restriction])
+        types = frozenset([type(r) for r in restriction])
         return len(types) <= 1
 
     def match(self, value):
@@ -246,17 +250,19 @@ class Restriction(object):
 class OfferMakerCore(object):
 
     def __init__(self, form, offer):
-        self.form = form
+        self.form_object = form()
         self.offer = None
-        self.values = {}
-        self.params_to_variants_groups = {}
-        self.variants_groups_to_params = {}
+        self.full_restrictions = {}  # RANGE or ITEM field
+        # self.values = {}
+        # self.params_to_variants_groups = {}
+        # self.variants_groups_to_params = {}
+        self.groups_to_params = {}
         self.full_matching_variants = {}
         self.full_params = {}
         self._configure(deepcopy(offer))
 
-    def get_form_response(self, values, initiator=None, break_variant=False):
-        form_values = OfferMakerCore.clean_form_values(self.form(), values)
+    def process(self, values, initiator=None, break_variant=False):
+        form_values = self.clean_form_values(values)
         original_form_values = copy(form_values)
 
         if break_variant:
@@ -272,25 +278,36 @@ class OfferMakerCore(object):
         if not matching_variants:
             raise NoMatchingVariantsException()
 
-        output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
+        output = self._sum_grouped_restrictions(matching_variants)
 
         if break_variant:
             for field, value in ((f, v) for f, v in original_form_values.items() if f != initiator):
                 if value != '' and output[field].match(value):
                     form_values[field] = original_form_values[field]
                     matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
-                    output = OfferMakerCore.sum_grouped_restrictions(matching_variants)
+                    output = self._sum_grouped_restrictions(matching_variants)
 
         full_outputs = self._get_single_value_change(form_values, output)
         return self.sum_restrictions([output] + full_outputs.values())
 
     def _configure(self, offer):
         self.offer = OfferMakerCore.parse_offer(offer)
-        main_params, self.variants_groups_to_params = OfferMakerCore.get_variants_groups(self.offer)
-        self.variants_groups_to_params['MAIN'] = main_params
+        # main_params, self.variants_groups_to_params = OfferMakerCore.get_variants_groups(self.offer)
+        # self.variants_groups_to_params['MAIN'] = main_params
         self.full_matching_variants = OfferMakerCore.get_matching_variants(self.offer, {})
         groups = OfferMakerCore.get_flatten_groups(self.full_matching_variants)
+
         self.full_params = sum([sum(x) or RestrictionSet() for x in groups])
+        groups_to_params = (frozenset([r for v in g for r in v.keys()]) for g in groups)
+        self.groups_to_params = dict([(str(i), g) for i, g in enumerate(groups_to_params)])
+
+        def _full_restriction(name, field):
+            if hasattr(field, 'choices'):
+                return Restriction(name, [y for y, _ in field.choices if y != ''])
+            else:
+                return Restriction(name, (getattr(field, 'min_value', None), getattr(field, 'max_value', None)))
+
+        self.full_restrictions = dict([(k, _full_restriction(k, f)) for k, f in self.form_object.fields.items()])
 
     def _get_single_value_change(self, form_values, output):
         """
@@ -313,7 +330,7 @@ class OfferMakerCore(object):
             if not param_matching_variants:
                 continue
 
-            temp_full_output = OfferMakerCore.sum_grouped_restrictions(param_matching_variants)
+            temp_full_output = self._sum_grouped_restrictions(param_matching_variants)
             full_outputs[param] = dict((k, v) for k, v in temp_full_output.items() if k in form_values)
         return full_outputs
 
@@ -349,7 +366,7 @@ class OfferMakerCore(object):
         """
         Getting set of params, which are touched in groups
         """
-        params = set(the_variant['params'].keys())
+        params = frozenset(the_variant['params'].keys())
         subvariants = None
         if 'variants' in the_variant and the_variant['variants']:
             subvariants = {}
@@ -365,17 +382,16 @@ class OfferMakerCore(object):
                 subvariants[str(i)] = group_params
         return params, subvariants
 
-    @staticmethod
-    def clean_form_values(form_object, form_values):
+    def clean_form_values(self, form_values):
         new_form_values = {}
-        for field_name in (f for f, v in form_values.items() if v and f in form_object.fields):
+        for field_name in (f for f, v in form_values.items() if v and f in self.form_object.fields):
             if field_name[-2:] == '[]':
                 input_field_name = field_name[:-2]
                 value = form_values.getlist(field_name)
             else:
                 input_field_name = field_name
                 value = form_values.get(field_name)
-            new_form_values[input_field_name] = form_object.fields[input_field_name].clean(value)
+            new_form_values[input_field_name] = self.form_object.fields[input_field_name].clean(value)
         return new_form_values
 
     @staticmethod
@@ -429,14 +445,9 @@ class OfferMakerCore(object):
         output['variants'] = new_variants
         return output
 
-    @staticmethod
-    def sum_grouped_restrictions(variants):
+    def _sum_grouped_restrictions(self, variants):
         groups = OfferMakerCore.get_flatten_groups(variants)
         summarized_groups = OfferMakerCore.get_summarized_groups(groups)
-
-        # suma variantów
-        # sum([a=(1, 3), b=1], [b=2]) = [a=(1,3), b=(1,2)],
-        # a powinno być sum([a=(1, 3), b=1], [b=2]) = [a=(1,2,3), b=(1,2)],
 
         for sg in (x for x in summarized_groups if x):
             for i, g in enumerate(groups):
@@ -445,6 +456,12 @@ class OfferMakerCore(object):
                     new_g = OfferMakerCore.restrict_group_by_summarized(copy(g), sg)
                     groups[i] = new_g
                     summarized_groups.append(sum(groups[i]) or RestrictionSet())
+
+        for i, g in enumerate(groups):
+            group_params = self.groups_to_params[str(i)]
+            for v in g:
+                for p in group_params.difference(frozenset(v.keys())):
+                    v[p] = self.full_restrictions[p]
 
         return sum([sum(x) or RestrictionSet() for x in groups])  # należy zsumować taką listę
 
