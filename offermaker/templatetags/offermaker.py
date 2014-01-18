@@ -53,7 +53,7 @@ def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, table
     if orientation == 'HORIZONTAL':
         table_output = []
         for field in fields:
-            column_output = [_HeaderCell._replace(name=field)]
+            column_output = [_HeaderCell._replace(name=object_fields[field].label)]
             for row in summary:
                 field_value = row[field]
                 prev_cell_ref = len(column_output) - 1
