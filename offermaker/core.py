@@ -18,10 +18,15 @@ class Range(tuple):
     def __new__(cls, *args):
         if isinstance(args[0], (tuple, list)):
             Range._validate_range_restriction(args[0])
-            return tuple.__new__(cls, args[0])
+            x, y = args[0]
         else:
             Range._validate_range_restriction(args)
-            return tuple.__new__(cls, args)
+            x, y = args
+        if x is None:
+            x = -float("inf")
+        if y is None:
+            y = float("inf")
+        return tuple.__new__(cls, [x, y])
 
     @staticmethod
     def _validate_range_restriction(restriction):
@@ -33,36 +38,18 @@ class Range(tuple):
                 # Empty range restriction, ex. sum of half limited restrictions
                 pass
             elif not any(restriction_is_none):
-                if not Restriction.has_restriction_the_same_types(restriction):
-                    raise RangeException(u"Both side of range restriction must have same type, "
+                if not all(isinstance(x, (int, float, long)) for x in restriction):
+                    raise RangeException(u"Both side of range restriction must be numeric, "
                                          u"but %s isn't" % str(restriction))
                 if restriction[0] > restriction[1]:
                     raise RangeException(u"Left side must smaller the right in range restriction, "
                                          u"but %s isn't" % str(restriction))
 
     @staticmethod
-    def first_item_cmp(a, b):
-        # None on the first position means minus infinity
-        if a is None and b is not None:
-            return -1
-        elif b is None and a is not None:
-            return 1
-        return cmp(a, b)
-
-    @staticmethod
-    def second_item_cmp(a, b):
-        # None on the second position means minus infinity
-        if a is None and b is not None:
-            return 1
-        elif b is None and a is not None:
-            return -1
-        return cmp(a, b)
-
-    @staticmethod
     def range_cmp(a, b):
-        first_cmp = Range.first_item_cmp(a[0], b[0])
+        first_cmp = cmp(a[0], b[0])
         if first_cmp == 0:
-            return Range.second_item_cmp(a[1], b[1])
+            return cmp(a[1], b[1])
         else:
             return first_cmp
 
@@ -75,19 +62,52 @@ class Range(tuple):
         sets = sorted(sets, cmp=Range.range_cmp)
         saved = list(sets[0])
         for st, en in sets[1:]:
-            if Range.second_item_cmp(st, saved[1]) <= 0:
-                saved[1] = saved[1] if Range.second_item_cmp(saved[1], en) == 1 else en
+            if st <= saved[1]:
+                saved[1] = max(saved[1], en)
             else:
                 yield tuple(saved)
                 saved[0] = st
                 saved[1] = en
         yield tuple(saved)
 
+    @staticmethod
+    def sets_diff(sets_x, sets_y):
+        if not sets_y:
+            yield sets_x
+            return
+
+        sets_x = sorted(sets_x, cmp=Range.range_cmp)
+        sets_y = sorted(sets_y, cmp=Range.range_cmp)
+        sets_y_iter = iter(x for x in sets_y if Range.is_range(x))
+        y_st, y_en = y_range = sets_y_iter.next()
+
+        for x_range in sets_x:
+            x_st, x_en = x_range
+            try:
+                if x_en <= y_st:
+                    yield Range(x_st, x_en)
+                else:
+                    while y_st == y_en or (y_en <= x_st and not Range.is_range(x_range * y_range)):
+                        y_st, y_en = y_range = sets_y_iter.next()
+
+                    while y_st <= x_en:
+                        if x_st < y_st:
+                            yield (x_st, min(x_en, y_st))
+                        if y_en <= x_en:
+                            x_st = y_en
+                        y_st, y_en = y_range = sets_y_iter.next()
+                    else:
+                        yield x_range
+            except StopIteration:
+                if x_en > y_en:
+                    yield Range(x_st, x_en)
+
+    @staticmethod
+    def is_range(x):
+        return x is not None and x[0] != x[1]
+
     def __mul__(self, other):
-        first_cmp = Range.first_item_cmp(self[0], other[0])
-        second_cmp = Range.second_item_cmp(self[1], other[1])
-        output = (self[0] if first_cmp > 0 else other[0], # max(self[0], other[0])
-                  self[1] if second_cmp < 0 else other[1]) # min(self[1], other[1])
+        output = (max(self[0], other[0]), min(self[1], other[1]))
         try:
             Range._validate_range_restriction(output)
             return output
@@ -103,6 +123,11 @@ class Range(tuple):
                     if item is not None:
                         yield item
         return reduce(sets_product_reduce, sets)
+
+    def __str__(self):
+        x = '' if self[0] == -float("inf") else self[0]
+        y = '' if self[1] == float("inf") else self[1]
+        return '%s - %s' % (x, y)
 
 
 class RestrictionSet(dict):
@@ -125,9 +150,112 @@ class RestrictionSet(dict):
                 output[field] = other[field]
         return output
 
+    def __mul__(self, other):
+        output = RestrictionSet()
+        for key in self:
+            if key in other:
+                mul = self[key] * other[key]
+                if mul is not None:
+                    output[key] = mul
+        return output
+
+    def __sub__(self, other):
+        output = RestrictionSet()
+        for key in self:
+            if key in other:
+                sub = self[key] - other[key]
+                if sub is not None:
+                    output[key] = sub
+            else:
+                output[key] = self[key]
+        return output
+
     @staticmethod
-    def sum(sets, omc):
-        pass
+    def intersection_with_rest(rs1, rs2):
+        """
+        rs1 = {A in x, y, z; B [<3, 5>, <6,7>]}
+        rs2 = {B [<2, 6>]; C = k}
+
+        rs1 * rs2 = [
+            {A in x, y, z; B [<6,7>]},
+            {B [<2, 5>]},
+            {B [<5, 6>]; C=k}
+        ]
+        """
+        # if not isinstance(rs1, RestrictionSet) and isinstance(rs1, dict):
+        #     rs1 = RestrictionSet(rs1)
+        # if not isinstance(rs2, RestrictionSet) and isinstance(rs2, dict):
+        #     rs2 = RestrictionSet(rs2)
+        output = []
+        mul = rs1 * rs2
+        left = rs1 - mul
+        right = rs2 - mul
+        if left:
+            output.append(left)
+        if mul:
+            output.append(mul)
+        if right:
+            output.append(right)
+        return output
+
+
+    @staticmethod
+    def union_with_intersection(rs1, rs2):
+        """
+        rs1 = {A in x, y, z; B [<3, 5>, <6,7>]}
+        rs2 = {B [<2, 6>]; C = k}
+
+        rs1 * rs2 = [
+            {A in x, y, z, {B [<2, 5>]}, C=k}
+        ]
+        """
+        # if not isinstance(rs1, RestrictionSet) and isinstance(rs1, dict):
+        #     rs1 = RestrictionSet(rs1)
+        # if not isinstance(rs2, RestrictionSet) and isinstance(rs2, dict):
+        #     rs2 = RestrictionSet(rs2)
+        mul_ = rs1 * rs2
+        sum_ = rs1 + rs2
+        common_keys = set(rs1.keys()).intersection(rs2.keys())
+        if not all(k in mul_ for k in common_keys):
+            return None
+        for k in common_keys:
+            del sum_[k]
+        sum_.update(mul_)
+        return sum_
+
+    def items_to_variants(self):
+        is_items_fields = lambda restr: restr.items or (restr.ranges and len(restr.ranges) > 0)
+        items_fields = dict((field, restr) for field, restr in self.items() if is_items_fields(restr))
+        if not items_fields:
+            yield self
+            return
+
+        output = RestrictionSet()
+        for field, restr in (i for i in self.items() if i[0] not in items_fields):
+            output[field] = restr
+
+        def reduce_splitted(x, y):
+            for i in x:
+                for j in y:
+                    i.update(j)  # overriding from previous iteration
+                    yield RestrictionSet(i)
+
+        splitted = ([RestrictionSet({f: Restriction(f, i)})
+                     for i in r.items or r.ranges] for f, r in items_fields.items())
+        varianted = reduce(reduce_splitted, splitted)
+        for v in varianted:
+            v.update(output)
+            yield v
+
+    @staticmethod
+    def fields_cmp(fields):
+        def variants_cmp(x, y):
+            for f in fields:
+                out = cmp(x.get(f), y.get(f))
+                if out != 0:
+                    return out
+            return 0
+        return variants_cmp
 
 
 class Restriction(object):
@@ -152,7 +280,10 @@ class Restriction(object):
             else:
                 if not Restriction.has_restriction_the_same_types(restriction):
                     raise Exception(u"All items in restriction must have same type, but %s isn't" % str(restriction))
-                self.items = frozenset(restriction)
+                if len(restriction) == 1:
+                    self.fixed = iter(restriction).next()
+                else:
+                    self.items = frozenset(restriction)
         else:
             self.fixed = restriction
         if self.ranges and len(self.ranges) == 1:
@@ -204,6 +335,28 @@ class Restriction(object):
 
         return Restriction(self.field, self_items.union(other_items))
 
+    def __sub__(self, other):
+        if self.field != other.field:
+            raise Exception(u"You can add only restrictions of the same field, you trying "
+                            u"add %s to %s" % (self.field, other.field))
+        if (self.ranges and not other.ranges) or (not self.ranges and other.ranges):
+            raise Exception(u"Range restriction can be added only to other range restriction, "
+                            u"unlike in '%s'" % self.field)
+        # if one is range restriction, both are
+        if self.ranges:
+            ranges = frozenset(Range.sets_diff(self.ranges, other.ranges))
+            if not ranges:
+                return None
+            return Restriction(self.field, ranges)
+
+        self_items = self.items or frozenset([self.fixed])
+        other_items = other.items or frozenset([other.fixed])
+        sub = self_items.difference(other_items)
+        if sub:
+            return Restriction(self.field, sub)
+
+        return None
+
     def __mul__(self, other):
         if self.field != other.field:
             raise Exception(u"You can multiply only restrictions of the same field, you trying "
@@ -214,6 +367,8 @@ class Restriction(object):
 
         if self.ranges:
             ranges = frozenset(Range.sets_product((self.ranges, other.ranges)))
+            if not ranges:
+                return None
             output = Restriction(self.field, ranges)
             return output
 
@@ -228,6 +383,8 @@ class Restriction(object):
             return None
 
     def __eq__(self, other):
+        if other is None:
+            return False
         if self.items is not None and other.items is not None:
             return self.items == other.items
         elif self.fixed is not None and other.fixed is not None:
@@ -246,16 +403,45 @@ class Restriction(object):
             output.append('x = %s' % repr(self.fixed))
         return ', '.join(output)
 
+    def format_str(self, object_fields=None):
+        if object_fields is None:
+            formatter = lambda x: x
+        else:
+            def formatter(x):
+                field = object_fields[self.field]
+                if hasattr(field, 'choices'):
+                    return dict(field.choices)[x]
+                else:
+                    return x
+
+        if self.fixed:
+            return str(formatter(self.fixed))
+        if self.ranges:
+            return u', '.join(str(r) for r in sorted(self.ranges))
+        if self.items:
+            return u', '.join(str(formatter(r)) for r in sorted(self.items))
+        return u''
+
+    def __str__(self):
+        return self.format_str()
+
+    def __cmp__(self, other):
+        if other is None:
+            return -1
+        if self.items or self.fixed:
+            return cmp(sorted(self.items or [self.fixed]),
+                       sorted(other.items or [other.fixed]))
+        else:  # range
+            return cmp(sorted(self.ranges), sorted(other.ranges))
+
 
 class OfferMakerCore(object):
 
     def __init__(self, form, offer):
+        self.form = form
         self.form_object = form()
         self.offer = None
         self.full_restrictions = {}  # RANGE or ITEM field
-        # self.values = {}
-        # self.params_to_variants_groups = {}
-        # self.variants_groups_to_params = {}
         self.groups_to_params = {}
         self.full_matching_variants = {}
         self.full_params = {}
@@ -268,13 +454,7 @@ class OfferMakerCore(object):
         if break_variant:
             form_values = dict((k, v) for k, v in form_values.items() if k == initiator)
 
-        # if not OfferMakerCore.do_variant_params_match(self.offer['params'], form_values):
-        #     raise NoMatchingVariantsException()
-        # matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, form_values))
-        # if matching_groups != set(self.variants_groups_to_params.keys()):
-        #     raise NoMatchingVariantsException()
-
-        matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
+        matching_variants = OfferMakerCore._get_matching_variants(self.offer, form_values)
         if not matching_variants:
             raise NoMatchingVariantsException()
 
@@ -284,18 +464,47 @@ class OfferMakerCore(object):
             for field, value in ((f, v) for f, v in original_form_values.items() if f != initiator):
                 if value != '' and output[field].match(value):
                     form_values[field] = original_form_values[field]
-                    matching_variants = OfferMakerCore.get_matching_variants(self.offer, form_values)
+                    matching_variants = OfferMakerCore._get_matching_variants(self.offer, form_values)
                     output = self._sum_grouped_restrictions(matching_variants)
 
         full_outputs = self._get_single_value_change(form_values, output)
-        return self.sum_restrictions([output] + full_outputs.values())
+        return self._sum_restrictions([output] + full_outputs.values())
+
+    def clean_form_values(self, form_values):
+        new_form_values = {}
+        for field_name in (f for f, v in form_values.items() if v and f in self.form_object.fields):
+            if field_name[-2:] == '[]':
+                input_field_name = field_name[:-2]
+                value = form_values.getlist(field_name)
+            else:
+                input_field_name = field_name
+                value = form_values.get(field_name)
+            new_form_values[input_field_name] = self.form_object.fields[input_field_name].clean(value)
+        return new_form_values
+
+    def offer_summary(self, fields=None):
+        def restrict_fields(v):
+            for f in v.keys():
+                if f not in fields:
+                    del v[f]
+
+        def reduce_merge_groups(g1, g2):
+            for v1, v2 in ((v1, v2) for v1 in g1 for v2 in g2):
+                x = RestrictionSet.union_with_intersection(v1, v2)
+                if x is not None:
+                    yield x
+
+        groups = OfferMakerCore._get_flatten_groups(self.offer)
+        [restrict_fields(v) for g in groups for v in g]
+        self._fill_variants_with_full_restrictions(groups)
+        merged_groups = reduce(reduce_merge_groups, groups)
+        varianted_groups = OfferMakerCore._items_to_variants(merged_groups)
+        return sorted(varianted_groups, cmp=RestrictionSet.fields_cmp(fields))
 
     def _configure(self, offer):
-        self.offer = OfferMakerCore.parse_offer(offer)
-        # main_params, self.variants_groups_to_params = OfferMakerCore.get_variants_groups(self.offer)
-        # self.variants_groups_to_params['MAIN'] = main_params
-        self.full_matching_variants = OfferMakerCore.get_matching_variants(self.offer, {})
-        groups = OfferMakerCore.get_flatten_groups(self.full_matching_variants)
+        self.offer = OfferMakerCore._parse_offer(offer)
+        self.full_matching_variants = OfferMakerCore._get_matching_variants(self.offer, {})
+        groups = OfferMakerCore._get_flatten_groups(self.full_matching_variants)
 
         self.full_params = sum([sum(x) or RestrictionSet() for x in groups])
         groups_to_params = (frozenset([r for v in g for r in v.keys()]) for g in groups)
@@ -309,33 +518,8 @@ class OfferMakerCore(object):
 
         self.full_restrictions = dict([(k, _full_restriction(k, f)) for k, f in self.form_object.fields.items()])
 
-    def _get_single_value_change(self, form_values, output):
-        """
-        Returns list of possible values if each input param would be changed
-        """
-        form_values = copy(form_values)
-        fixed_values = dict((k, v.fixed) for k, v in output.items() if v.fixed is not None)
-        form_values.update(fixed_values)
-
-        full_outputs = {}
-        for param in form_values:
-            temp_form_values = copy(form_values)
-            del temp_form_values[param]
-
-            # param_matching_groups = set(['MAIN'] + OfferMakerCore.get_matching_groups(self.offer, temp_form_values))
-            # if param_matching_groups != set(self.variants_groups_to_params.keys()):
-            #     continue
-
-            param_matching_variants = OfferMakerCore.get_matching_variants(self.offer, temp_form_values)
-            if not param_matching_variants:
-                continue
-
-            temp_full_output = self._sum_grouped_restrictions(param_matching_variants)
-            full_outputs[param] = dict((k, v) for k, v in temp_full_output.items() if k in form_values)
-        return full_outputs
-
     @staticmethod
-    def parse_offer(the_variant, top=True):
+    def _parse_offer(the_variant, top=True):
         """
         Normalizing two ways of defining groups of variants. 1. with separated groups, 2. with one/default group,
         Parse and validate restrictions
@@ -351,7 +535,7 @@ class OfferMakerCore(object):
                 raise Exception("Variant groups are allowed only on top level")
 
             for group in groups:
-                output.append([OfferMakerCore.parse_offer(variant, False) for variant in group])
+                output.append([OfferMakerCore._parse_offer(variant, False) for variant in group])
 
             the_variant['variants'] = output
 
@@ -362,40 +546,7 @@ class OfferMakerCore(object):
         return the_variant
 
     @staticmethod
-    def get_variants_groups(the_variant):
-        """
-        Getting set of params, which are touched in groups
-        """
-        params = frozenset(the_variant['params'].keys())
-        subvariants = None
-        if 'variants' in the_variant and the_variant['variants']:
-            subvariants = {}
-            for i, group in enumerate(the_variant['variants']):
-                group_params = set()
-                for subvariant in group:
-                    subvariant_params, subvariant_subvariants = OfferMakerCore.get_variants_groups(subvariant)
-                    if subvariant_subvariants:
-                        for k, v in subvariant_subvariants.items():
-                            subvariants['%d-%s' % (i, k)] = v
-                            group_params.update(v)
-                    group_params.update(set(subvariant_params))
-                subvariants[str(i)] = group_params
-        return params, subvariants
-
-    def clean_form_values(self, form_values):
-        new_form_values = {}
-        for field_name in (f for f, v in form_values.items() if v and f in self.form_object.fields):
-            if field_name[-2:] == '[]':
-                input_field_name = field_name[:-2]
-                value = form_values.getlist(field_name)
-            else:
-                input_field_name = field_name
-                value = form_values.get(field_name)
-            new_form_values[input_field_name] = self.form_object.fields[input_field_name].clean(value)
-        return new_form_values
-
-    @staticmethod
-    def do_variant_params_match(params, values):
+    def _has_variant_params_match(params, values):
         """
         Check if given params match to configured restrictions in variant
         """
@@ -405,23 +556,36 @@ class OfferMakerCore(object):
                     return False
         return True
 
-    # @staticmethod
-    # def get_matching_groups(the_variant, values):
-    #     """
-    #     Returns all match groups (if one of group doesn't match anymore, it means that value was wrong)
-    #     """
-    #     output = []
-    #     for i, group in enumerate(the_variant['variants']):
-    #         if any((OfferMakerCore.do_variant_params_match(variant['params'], values) for variant in group)):
-    #             output.append(str(i))
-    #         for variant in group:
-    #             if 'variants' in variant:
-    #                 output.extend(['%d-%s' % (i, vg) for vg in OfferMakerCore.get_matching_groups(variant, values)])
-    #     return output
+    @staticmethod
+    def _get_flatten_groups(the_variant):
+        output = [[RestrictionSet(the_variant['params'])]]
+        if 'variants' in the_variant:
+            for group in the_variant['variants']:
+                output_group = []
+                for variant in group:
+                    for subvariant in OfferMakerCore._get_flatten_variant(variant):
+                        output_group.append(RestrictionSet(subvariant))
+                output.append(output_group)
+        return output
 
     @staticmethod
-    def get_matching_variants(the_variant, values):
-        if not OfferMakerCore.do_variant_params_match(the_variant['params'], values):
+    def _get_flatten_variant(the_variant):
+        the_params = the_variant['params']
+        yielded = False
+        if 'variants' in the_variant:
+            for group in the_variant['variants']:
+                for variant in group:
+                    for params in OfferMakerCore._get_flatten_variant(variant):
+                        the_params_copy = copy(the_params)
+                        the_params_copy.update(params)
+                        yield the_params_copy
+                        yielded = True
+        if not yielded:
+            yield copy(the_params)
+
+    @staticmethod
+    def _get_matching_variants(the_variant, values):
+        if not OfferMakerCore._has_variant_params_match(the_variant['params'], values):
             return None
 
         output = {
@@ -434,7 +598,7 @@ class OfferMakerCore(object):
         for group in the_variant['variants']:
             new_group = []
             for variant in group:
-                new_variant = OfferMakerCore.get_matching_variants(variant, values)
+                new_variant = OfferMakerCore._get_matching_variants(variant, values)
                 if not new_variant:
                     continue
                 new_group.append(new_variant)
@@ -445,29 +609,97 @@ class OfferMakerCore(object):
         output['variants'] = new_variants
         return output
 
-    def _sum_grouped_restrictions(self, variants):
-        groups = OfferMakerCore.get_flatten_groups(variants)
-        summarized_groups = OfferMakerCore.get_summarized_groups(groups)
+    def _get_single_value_change(self, form_values, output):
+        """
+        Returns list of possible values if each input param would be changed
+        """
+        form_values = copy(form_values)
+        fixed_values = dict((k, v.fixed) for k, v in output.items() if v.fixed is not None)
+        form_values.update(fixed_values)
+
+        full_outputs = {}
+        for param in form_values:
+            temp_form_values = copy(form_values)
+            del temp_form_values[param]
+
+            param_matching_variants = OfferMakerCore._get_matching_variants(self.offer, temp_form_values)
+            if not param_matching_variants:
+                continue
+
+            temp_full_output = self._sum_grouped_restrictions(param_matching_variants)
+            full_outputs[param] = dict((k, v) for k, v in temp_full_output.items() if k == param)
+        return full_outputs
+
+    @staticmethod
+    def _get_summarized_groups(grouped_subparams):
+        return [sum(x) or {} for x in grouped_subparams]
+
+    @staticmethod
+    def _get_variants_groups(the_variant):
+        """
+        Getting set of params, which are touched in groups
+        """
+        params = frozenset(the_variant['params'].keys())
+        subvariants = None
+        if 'variants' in the_variant and the_variant['variants']:
+            subvariants = {}
+            for i, group in enumerate(the_variant['variants']):
+                group_params = set()
+                for subvariant in group:
+                    subvariant_params, subvariant_subvariants = OfferMakerCore._get_variants_groups(subvariant)
+                    if subvariant_subvariants:
+                        for k, v in subvariant_subvariants.items():
+                            subvariants['%d-%s' % (i, k)] = v
+                            group_params.update(v)
+                    group_params.update(set(subvariant_params))
+                subvariants[str(i)] = group_params
+        return params, subvariants
+
+    @staticmethod
+    def _items_to_variants(variants):
+        for variant in variants:
+            for new_variant in variant.items_to_variants():
+                yield new_variant
+
+    @staticmethod
+    def _sum_restrictions(restrictions_groups):
+        output = {}
+        for restrictions in restrictions_groups:
+            for name, restriction in restrictions.items():
+                if name in output:
+                    output[name] += restriction
+                else:
+                    output[name] = restriction
+        return output
+
+    def _get_grouped_restrictions(self, variants):
+        groups = OfferMakerCore._get_flatten_groups(variants)
+        summarized_groups = OfferMakerCore._get_summarized_groups(groups)
 
         for sg in (x for x in summarized_groups if x):
             for i, g in enumerate(groups):
-                new_g = OfferMakerCore.restrict_group_by_summarized(copy(g), sg)
-                if len(new_g) != len(g):
-                    new_g = OfferMakerCore.restrict_group_by_summarized(copy(g), sg)
+                new_g = OfferMakerCore._restrict_group_by_summarized(copy(g), sg)
+                if new_g != g:
+                    new_g = OfferMakerCore._restrict_group_by_summarized(copy(g), sg)
                     groups[i] = new_g
                     summarized_groups.append(sum(groups[i]) or RestrictionSet())
 
-        for i, g in enumerate(groups):
-            group_params = self.groups_to_params[str(i)]
-            for v in g:
-                for p in group_params.difference(frozenset(v.keys())):
-                    v[p] = self.full_restrictions[p]
+        self._fill_variants_with_full_restrictions(groups)
+        return groups
 
-        return sum([sum(x) or RestrictionSet() for x in groups])  # należy zsumować taką listę
+    def _fill_variants_with_full_restrictions(self, groups):
+        for i, group in enumerate(groups):
+            group_params = self.groups_to_params[str(i)]
+            for variant in group:
+                for param in group_params.difference(frozenset(variant.keys())):
+                    variant[param] = self.full_restrictions[param]
+
+    def _sum_grouped_restrictions(self, variants):
+        groups = self._get_grouped_restrictions(variants)
+        return sum([sum(x) or RestrictionSet() for x in groups])
 
     @staticmethod
-    def restrict_group_by_summarized(group, summarized_group):
-        # czy modyfikujemy varianty gdy pasują
+    def _restrict_group_by_summarized(group, summarized_group):
         out = [OfferMakerCore._variant_restrict_by_summarized(v, summarized_group) for v in group]
         return [x for x in out if x is not None]
 
@@ -480,84 +712,3 @@ class OfferMakerCore(object):
                     return None
                 variant[key] = product
         return variant
-
-    @staticmethod
-    def sum_restrictions(restrictions_groups):
-        output = {}
-        for restrictions in restrictions_groups:
-            for name, restriction in restrictions.items():
-                if name in output:
-                    output[name] += restriction
-                else:
-                    output[name] = restriction
-        return output
-
-    @staticmethod
-    def get_summarized_groups(grouped_subparams):
-        return [sum(x) or {} for x in grouped_subparams]
-
-    @staticmethod
-    def get_flatten_groups(the_variant):
-        output = [[RestrictionSet(the_variant['params'])]]
-        if 'variants' in the_variant:
-            for group in the_variant['variants']:
-                output_group = []
-                for variant in group:
-                    for subvariant in OfferMakerCore.get_flatten_variant(variant):
-                        output_group.append(RestrictionSet(subvariant))
-                output.append(output_group)
-        return output
-
-    @staticmethod
-    def get_flatten_variant(the_variant):
-        the_params = the_variant['params']
-        yielded = False
-        if 'variants' in the_variant:
-            for group in the_variant['variants']:
-                for variant in group:
-                    for params in OfferMakerCore.get_flatten_variant(variant):
-                        the_params_copy = copy(the_params)
-                        the_params_copy.update(params)
-                        yield the_params_copy
-                        yielded = True
-        if not yielded:
-            yield copy(the_params)
-
-
-
-#1. Dla wszystkich grup wyznaczamy listę parametrów, które w nich obowiązują (variants_groups)
-#2. Dla każdego z parametrów w requeście wyznaczamy listę grup, które
-#ograniczają dany parametr (na podstawie listy z 1.)
-#3. Dla każdego z parametrów w requeście wyznaczamy listę wariantów, do których
-#"pasują" (uwzględniamy tutaj listę z 1.)
-#4. Dla każdego z wariantów z 3., wyznaczamy listę grup, do których należy
-#5. Wyznaczamy grupy parametrów w zależności od wspólnych grup
-#6. Robimy JOINa 3 z 5 po parametrach
-#7. Jeżeli w punkcie 6. powstaną puste grupy, to znaczy, że oferta nie pasuje
-#
-#W przykładzie 1 jest błąd w pkt. 2, 5 i 6 - powinno być:
-#
-#2.
-#
-#MAKE (CARS, PERIOD, RV)
-#INSURANCE (CARS)
-#AGREEMENT-PERIOD (INTEREST, PERIOD, RV)
-#
-#5.
-#
-#CARS: MAKE, INSURANCE
-#PERIOD: MAKE, AGREEMENT-PERIOD
-#RV: MAKE, AGREEMENT-PERIOD
-#INTEREST: AGREEMENT-PERIOD
-#
-#6.
-#
-#CARS: (146,355,365,375,387) * (93,103,146) = (146)
-#PERIOD: (146,355,365,375,387) * (172,188,204,220,256,266,276,298,318) = () -
-#puste!!
-#RV: (146,355,365,375,387) * (172,188,204,220,256,266,276,298,318) = () -
-#puste!!
-#INTEREST: (172,188,204,220,256,266,276,298,318) =
-#(172,188,204,220,256,266,276,298,318)
-
-

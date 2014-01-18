@@ -119,8 +119,8 @@
                 $field.attr('om-restriction-items', _encode_items(items));
             } else if (ranges !== undefined) {
                 var ranges_str = iteration_str($.map(ranges, function(x) {
-                    if (x[0] === undefined) { return msg_factory('RANGE_left', x); }
-                    if (x[1] === undefined) { return msg_factory('RANGE_right', x); }
+                    if (x[0] === undefined || x[0] === null) { return msg_factory('RANGE_left', x); }
+                    if (x[1] === undefined || x[1] === null) { return msg_factory('RANGE_right', x); }
                     if (x[0] === x[1] ) { return x[0] }
                     else { return msg_factory('RANGE_both', x); }
                 }));
@@ -284,14 +284,14 @@
             });
         });
         var keyup_after_click_handler = function(change_handler) {
-            var keyup_occurred = false;
-            $inputs.bind('keyup mouseup', function(event) {
-                keyup_occurred = true;
-            });
+            //var keyup_occurred = false;
+            //$inputs.bind('keyup mouseup', function(event) {
+            //    keyup_occurred = true;
+            //});
             $inputs.bind('change', function(event) {
-                if (keyup_occurred) {
+                //if (keyup_occurred) {
                     setTimeout(change_handler(event), 1);
-                }
+                //}
             });
         };
         keyup_after_click_handler(handler);

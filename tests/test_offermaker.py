@@ -34,6 +34,8 @@ class DjangoFormMockup(object):
 
 class OfferMakerTest(TestCase):
 
+    maxDiff = None
+
     example_offer_1 = {
         'variants': [
             [{
@@ -133,3 +135,23 @@ class OfferMakerTest(TestCase):
                           'crediting_period': Restriction('crediting_period', ['12', '36', '48']),
                           'interest_rate': Restriction('interest_rate', (5, 5)),
                           'product': Restriction('product', ['PROD2', 'PROD3'])})
+
+    def test_breaking_variant_2(self):
+        input_ = {
+            'crediting_period': '24',
+            'product': 'PROD2',
+            'interest_rate': 5
+        }
+        self.assertEqual(self.core_2.process(input_, break_variant=True, initiator='product'), {
+                         'contribution': Restriction('contribution', (30, 70)),
+                         'crediting_period': Restriction('crediting_period', ['48']),
+                         'interest_rate': Restriction('interest_rate', (5, 5)),
+                         'product': Restriction('product', ['PROD2', 'PROD3'])})
+
+    def test_other_variants(self):
+        input_ = {'product': 'PROD1'}
+        self.assertEqual(self.core_1.process(input_), {
+                         'contribution': Restriction('contribution', [(10, 20), (30, 40)]),
+                         'crediting_period': Restriction('crediting_period', ['24']),
+                         'interest_rate': Restriction('interest_rate', [(2, 2), (4, 4)]),
+                         'product': Restriction('product', ['PROD1', 'PROD3'])})

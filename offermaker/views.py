@@ -1,4 +1,4 @@
-import json
+import json, re
 
 from django.http import HttpResponse
 
@@ -7,11 +7,19 @@ from offermaker.core import OfferMakerCore, NoMatchingVariantsException
 
 class OfferMakerDispatcher(object):
 
-    def __init__(self, form, handler_get, handler_post, offer=None):
-        self.form = form
+    def __init__(self, handler_get, handler_post, form=None, offer=None, core_object=None):
         self.handler_post = handler_post
         self.handler_get = handler_get
-        self.offer_core = OfferMakerCore(form, offer)
+        if core_object is None:
+            self.form = form
+            self.offer_core = OfferMakerCore(form, offer)
+        else:
+            self.form = core_object.form
+            self.offer_core = core_object
+
+    @classmethod
+    def from_core_object(cls, handler_get, handler_post, core_object):
+        return OfferMakerDispatcher(handler_get, handler_post, core_object=core_object)
 
     def _offermaker_field_descriptions(self, request):
         try:
@@ -44,6 +52,8 @@ class OfferMakerDispatcher(object):
                 # value: $val (no attr - no change)
                 # readonly: True/False (no attr - no change)
                 fields_descriptions = self._offermaker_field_descriptions(request)
-                return HttpResponse(json.dumps(list(fields_descriptions)), content_type="application/json")
+                json_output = json.dumps(list(fields_descriptions))
+                json_output = re.compile(r'\bInfinity\b').sub('null', json_output)
+                return HttpResponse(json_output, content_type="application/json")
             else:
                 return self.handler_get(self.form())

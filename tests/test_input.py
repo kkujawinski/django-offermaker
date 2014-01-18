@@ -23,11 +23,11 @@ class OfferMakerCoreInputTest(TestCase):
 
     def test_restriction_input_range_same_type(self):
         self.assertRaisesRegexp(
-            Exception, u"Both side of range restriction must have same type",
+            Exception, u"Both side of range restriction must be numeric",
             Restriction, 'field1', ('0', 2)
         )
         self.assertRaisesRegexp(
-            Exception, u"Both side of range restriction must have same type",
+            Exception, u"Both side of range restriction must be numeric",
             Restriction, 'field1', [(1, 2), (0, '2')]
         )
 
@@ -46,7 +46,3 @@ class OfferMakerCoreInputTest(TestCase):
             Exception, u"All items in restriction must have same type",
             Restriction, 'field1', ['1', '2', 4]
         )
-
-
-
-
