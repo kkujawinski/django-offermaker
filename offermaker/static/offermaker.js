@@ -7,6 +7,7 @@
         var $global_error = undefined;
         var break_current_variant = false;
 
+        var ajax_extra_params = options.ajax_extra_params || function(params) { return params };
         var error_alert_factory = options.error_alert_factory || function($field, msg) {
             var $error = $('<div class="alert alert-danger alert-dismissable">'
                            + '<button type="button" class="close" '
@@ -238,6 +239,7 @@
             var prepared_data = prepare_data();
             prepared_data['__break_current_variant__'] = break_current_variant;
             prepared_data['__initiator__'] = event_initiator;
+            prepared_data = ajax_extra_params(prepared_data);
             global_reset();
             loader_on();
             $.ajax({

@@ -104,6 +104,12 @@ class Range(tuple):
 
     @staticmethod
     def is_range(x):
+        if not isinstance(x, (list, tuple)):
+            return False
+        if len(x) != 2:
+            return False
+        if not all(y is None or isinstance(y, (int, float, long)) for y in x):
+            return False
         return x is not None and x[0] != x[1]
 
     def __mul__(self, other):
@@ -272,7 +278,7 @@ class Restriction(object):
         if isinstance(restriction, tuple):
             self.ranges = frozenset([Range(restriction)])
         elif isinstance(restriction, (list, set, frozenset)):
-            list_of_tuples = [isinstance(r, tuple) for r in restriction]
+            list_of_tuples = [isinstance(r, (tuple, list)) for r in restriction]
             if any(list_of_tuples) and not all(list_of_tuples):
                 raise Exception(u"Can't mix range restriction with items restriction, unlike %s" % str(restriction))
             if all(list_of_tuples):
@@ -432,7 +438,7 @@ class Restriction(object):
             return cmp(sorted(self.items or [self.fixed]),
                        sorted(other.items or [other.fixed]))
         else:  # range
-            return cmp(sorted(self.ranges), sorted(other.ranges))
+            return cmp(sorted(self.ranges or []), sorted(other.ranges or []))
 
 
 class OfferMakerCore(object):
@@ -496,9 +502,10 @@ class OfferMakerCore(object):
 
         groups = OfferMakerCore._get_flatten_groups(self.offer)
         [restrict_fields(v) for g in groups for v in g]
-        self._fill_variants_with_full_restrictions(groups)
+        self._fill_group_variants_with_full_restrictions(groups)
         merged_groups = reduce(reduce_merge_groups, groups)
-        varianted_groups = OfferMakerCore._items_to_variants(merged_groups)
+        varianted_groups = list(OfferMakerCore._items_to_variants(merged_groups))
+        self._fill_variants_with_full_restrictions(varianted_groups)
         return sorted(varianted_groups, cmp=RestrictionSet.fields_cmp(fields))
 
     def _configure(self, offer):
@@ -542,6 +549,33 @@ class OfferMakerCore(object):
         params_output = RestrictionSet()
         for name, value in the_variant.get('params', {}).items():
             params_output[name] = Restriction(name, value)
+        the_variant['params'] = params_output
+        return the_variant
+
+    @staticmethod
+    def parse_offer_dict(the_variant, top=True):
+        """
+        Normalizing two ways of defining groups of variants. 1. with separated groups, 2. with one/default group,
+        Parse and validate restrictions
+        """
+        if 'variants' in the_variant:
+            output = []
+            if isinstance(the_variant['variants'][0], dict):
+                groups = [the_variant['variants']]
+            else:
+                groups = the_variant['variants']
+
+            if not top and len(groups) > 1:
+                raise Exception("Variant groups are allowed only on top level")
+
+            for group in groups:
+                output.append([OfferMakerCore.parse_offer_dict(variant, False) for variant in group])
+
+            the_variant['variants'] = output
+
+        params_output = RestrictionSet()
+        for name, value in the_variant.get('params', {}).items():
+            params_output[name] = [value] if isinstance(value, tuple) else value
         the_variant['params'] = params_output
         return the_variant
 
@@ -684,15 +718,20 @@ class OfferMakerCore(object):
                     groups[i] = new_g
                     summarized_groups.append(sum(groups[i]) or RestrictionSet())
 
-        self._fill_variants_with_full_restrictions(groups)
+        self._fill_group_variants_with_full_restrictions(groups)
         return groups
 
-    def _fill_variants_with_full_restrictions(self, groups):
+    def _fill_group_variants_with_full_restrictions(self, groups):
         for i, group in enumerate(groups):
             group_params = self.groups_to_params[str(i)]
-            for variant in group:
-                for param in group_params.difference(frozenset(variant.keys())):
-                    variant[param] = self.full_restrictions[param]
+            self._fill_variants_with_full_restrictions(group, group_params)
+
+    def _fill_variants_with_full_restrictions(self, group, group_params=None):
+        if group_params is None:
+            group_params = frozenset(self.full_restrictions.keys())
+        for variant in group:
+            for param in group_params.difference(frozenset(variant.keys())):
+                variant[param] = self.full_restrictions[param]
 
     def _sum_grouped_restrictions(self, variants):
         groups = self._get_grouped_restrictions(variants)
