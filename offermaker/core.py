@@ -475,7 +475,9 @@ class OfferMakerCore(object):
                     output = self._sum_grouped_restrictions(matching_variants)
 
         full_outputs = self._get_single_value_change(form_values, output)
-        return self._sum_restrictions([output] + full_outputs.values())
+        output = self._sum_restrictions([output] + full_outputs.values())
+        output = self._fill_variant_with_full_restrictions(output)
+        return output
 
     def clean_form_values(self, form_values):
         new_form_values = {}
@@ -716,8 +718,14 @@ class OfferMakerCore(object):
         if group_params is None:
             group_params = frozenset(self.full_restrictions.keys())
         for variant in group:
-            for param in group_params.difference(frozenset(variant.keys())):
-                variant[param] = self.full_restrictions[param]
+            self._fill_variant_with_full_restrictions(variant, group_params)
+
+    def _fill_variant_with_full_restrictions(self, variant, group_params=None):
+        if group_params is None:
+            group_params = frozenset(self.full_restrictions.keys())
+        for param in group_params.difference(frozenset(variant.keys())):
+            variant[param] = self.full_restrictions[param]
+        return variant
 
     def _sum_grouped_restrictions(self, variants):
         groups = self._get_grouped_restrictions(variants)

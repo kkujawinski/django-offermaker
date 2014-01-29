@@ -88,6 +88,25 @@ class OfferMakerTest(TestCase):
         ]
     }
 
+    example_offer_3 = {
+        'params': {
+            'contribution': (30, 70),
+        },
+        'variants': [
+            {
+                'params': {
+                    'product': 'PROD1',
+                    'crediting_period': ['12', '24']
+                }
+            }, {
+                'params': {
+                    'product': 'PROD2',
+                    'crediting_period': ['36', '48']
+                },
+            }
+        ]
+    }
+
     class DemoOfferMakerForm(DjangoFormMockup):
         def __init__(self):
             super_init = super(OfferMakerTest.DemoOfferMakerForm, self).__init__
@@ -95,23 +114,25 @@ class OfferMakerTest(TestCase):
 
     core_1 = None
     core_2 = None
+    core_3 = None
 
     @classmethod
     def setUp(cls):
         cls.core_1 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_1)
         cls.core_2 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_2)
+        cls.core_3 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_3)
 
     def test_empty_request(self):
         self.assertEqual(self.core_1.process({}),
                          {'contribution': Restriction('contribution', [(10, 20), (30, 70)]),
-                          'crediting_period': Restriction('crediting_period', ['24', '12', '36', '48']),
+                          'crediting_period': Restriction('crediting_period', ['12', '24', '36', '48']),
                           'interest_rate': Restriction('interest_rate', [(2, 2), (4, 4), (5, 5)]),
                           'product': Restriction('product', ['PROD1', 'PROD2', 'PROD3'])})
 
     def test_filling_with_default_restrictions(self):
         self.assertEqual(self.core_2.process({}),
                          {'contribution': Restriction('contribution', [(0, None)]),
-                          'crediting_period': Restriction('crediting_period', ['24', '12', '36', '48']),
+                          'crediting_period': Restriction('crediting_period', ['12', '24', '36', '48']),
                           'interest_rate': Restriction('interest_rate', [(1, 5)]),
                           'product': Restriction('product', ['PROD1', 'PROD2', 'PROD3'])})
 
@@ -155,3 +176,10 @@ class OfferMakerTest(TestCase):
                          'crediting_period': Restriction('crediting_period', ['24']),
                          'interest_rate': Restriction('interest_rate', [(2, 2), (4, 4)]),
                          'product': Restriction('product', ['PROD1', 'PROD3'])})
+
+    def test_default_field_restriction(self):
+        self.assertEqual(self.core_3.process({}), {
+                         'contribution': Restriction('contribution', [(30, 70)]),
+                         'crediting_period': Restriction('crediting_period', ["12", "24", "36", "48"]),
+                         'interest_rate': Restriction('interest_rate', [(1, 5)]),
+                         'product': Restriction('product', ['PROD1', 'PROD2'])})
