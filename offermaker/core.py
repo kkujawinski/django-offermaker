@@ -530,7 +530,7 @@ class OfferMakerCore(object):
         self.full_restrictions = dict([(k, _full_restriction(k, f)) for k, f in self.form_object.fields.items()])
 
     @staticmethod
-    def _parse_offer(the_variant, top=True):
+    def _parse_offer(the_variant, top=True, is_dict_parse=False):
         """
         Normalizing two ways of defining groups of variants. 1. with separated groups, 2. with one/default group,
         Parse and validate restrictions
@@ -546,42 +546,24 @@ class OfferMakerCore(object):
                 raise Exception("Variant groups are allowed only on top level")
 
             for group in groups:
-                output.append([OfferMakerCore._parse_offer(variant, False) for variant in group])
+                output.append([OfferMakerCore._parse_offer(variant, top=False, is_dict_parse=is_dict_parse)
+                               for variant in group])
 
             the_variant['variants'] = output
 
         params_output = RestrictionSet()
-        for name, value in the_variant.get('params', {}).items():
-            params_output[name] = Restriction(name, value)
+        if is_dict_parse:
+            for name, value in the_variant.get('params', {}).items():
+                params_output[name] = [value] if isinstance(value, tuple) else value
+        else:
+            for name, value in the_variant.get('params', {}).items():
+                params_output[name] = Restriction(name, value)
         the_variant['params'] = params_output
         return the_variant
 
     @staticmethod
-    def parse_offer_dict(the_variant, top=True):
-        """
-        Normalizing two ways of defining groups of variants. 1. with separated groups, 2. with one/default group,
-        Parse and validate restrictions
-        """
-        if 'variants' in the_variant:
-            output = []
-            if isinstance(the_variant['variants'][0], dict):
-                groups = [the_variant['variants']]
-            else:
-                groups = the_variant['variants']
-
-            if not top and len(groups) > 1:
-                raise Exception("Variant groups are allowed only on top level")
-
-            for group in groups:
-                output.append([OfferMakerCore.parse_offer_dict(variant, False) for variant in group])
-
-            the_variant['variants'] = output
-
-        params_output = RestrictionSet()
-        for name, value in the_variant.get('params', {}).items():
-            params_output[name] = [value] if isinstance(value, tuple) else value
-        the_variant['params'] = params_output
-        return the_variant
+    def parse_offer_dict(the_variant):
+        return  OfferMakerCore._parse_offer(the_variant, is_dict_parse=True)
 
     @staticmethod
     def _has_variant_params_match(params, values):
