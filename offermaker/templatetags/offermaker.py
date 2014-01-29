@@ -15,11 +15,11 @@ def offermaker_javascript(skip=''):
 
     output = []
     if 'sprintf' not in skip:
-        url = static('sprintf.min.js')
+        url = static('offermaker/sprintf.min.js')
         if url:
             output.append(u'<script src="%s"></script>' % url)
 
-    url = static('offermaker.js')
+    url = static('offermaker/offermaker.js')
     if url:
         output.append(u'<script src="%s"></script>' % url)
 
@@ -31,7 +31,7 @@ def offermaker_css():
     """
     HTML tag to insert offermaker css file
     """
-    url = static('offermaker.css')
+    url = static('offermaker/offermaker.css')
     if url:
         return u'<link rel="stylesheet" href="%s">' % url
     return u''
