@@ -31,9 +31,9 @@ class OfferMakerDispatcher(object):
             for field, restriction in matched_variants.items():
                 field_description = {'field': field}
                 if restriction.items:
-                    field_description['items'] = list(restriction.items)
+                    field_description['items'] = sorted(list(restriction.items))
                 if restriction.ranges:
-                    field_description['ranges'] = list(restriction.ranges)
+                    field_description['ranges'] = sorted(list(restriction.ranges))
                 if restriction.fixed:
                     field_description['fixed'] = restriction.fixed
                 yield field_description
