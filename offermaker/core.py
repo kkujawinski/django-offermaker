@@ -1,6 +1,7 @@
 # coding=utf-8
 from copy import deepcopy, copy
 from __builtin__ import enumerate
+from django.core.exceptions import ValidationError
 
 __author__ = 'kamil'
 
@@ -485,7 +486,10 @@ class OfferMakerCore(object):
             else:
                 input_field_name = field_name
                 value = form_values.get(field_name)
-            new_form_values[input_field_name] = self.form_object.fields[input_field_name].clean(value)
+            try:
+                new_form_values[input_field_name] = self.form_object.fields[input_field_name].clean(value)
+            except ValidationError:
+                raise NoMatchingVariantsException()
         return new_form_values
 
     def offer_summary(self, fields=None):
