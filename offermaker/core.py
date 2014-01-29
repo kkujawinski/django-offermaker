@@ -299,7 +299,7 @@ class Restriction(object):
 
     @staticmethod
     def has_restriction_the_same_types(restriction):
-        types = frozenset([type(r) for r in restriction])
+        types = frozenset((basestring if isinstance(r, basestring) else type(r) for r in restriction))
         return len(types) <= 1
 
     def match(self, value):
