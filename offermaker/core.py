@@ -565,7 +565,7 @@ class OfferMakerCore(object):
 
     @staticmethod
     def parse_offer_dict(the_variant):
-        return  OfferMakerCore._parse_offer(the_variant, is_dict_parse=True)
+        return OfferMakerCore._parse_offer(the_variant, is_dict_parse=True)
 
     @staticmethod
     def _has_variant_params_match(params, values):

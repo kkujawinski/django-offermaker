@@ -1,0 +1,32 @@
+.offermaker_editor_panel {
+    margin-left: 10em;
+}
+.offermaker_editor_field {
+    max-width: 20em;
+}
+.offermaker_editor_field label {
+    width: 9em;
+}
+.offermaker_editor_field .form-control {
+    border: 1px solid #ccc;
+    margin-left: 11em;
+    margin-bottom: 0.3em;
+    display: block;
+    width: 100%;
+    padding: 5px 4px 0 4px;
+    font-size: 11px;
+    line-height: 1.028571429;
+    color: #555;
+    vertical-align: middle;
+    min-height: 0;
+}
+.offermaker_editor_field .tokenfield .token {
+    height: 16px;
+    padding-top: 2px;
+}
+.offermaker_editor_field .tokenfield .token .close {
+    line-height: 1em;
+}
+.offermaker_editor_field .tokenfield .token-input {
+    height: 12px;
+}
