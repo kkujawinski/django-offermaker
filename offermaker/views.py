@@ -29,14 +29,20 @@ class OfferMakerDispatcher(object):
                                           initiator=request.GET.get('__initiator__'),
                                           break_variant=request.GET.get('__break_current_variant__') == 'true')
             for field, restriction in matched_variants.items():
+                skip_restriction = False
                 field_description = {'field': field}
                 if restriction.items:
                     field_description['items'] = sorted(list(restriction.items))
                 if restriction.ranges:
+                    if len(restriction.ranges) == 1:
+                        range = iter(restriction.ranges).next()
+                        if range[0] == -float("inf") and range[1] == float("inf"):
+                            skip_restriction = True
                     field_description['ranges'] = sorted(list(restriction.ranges))
                 if restriction.fixed:
                     field_description['fixed'] = restriction.fixed
-                yield field_description
+                if not skip_restriction:
+                    yield field_description
         except NoMatchingVariantsException:
             yield {'field': '__all__', 'errors': 'NoMatchingVariants'}
 
