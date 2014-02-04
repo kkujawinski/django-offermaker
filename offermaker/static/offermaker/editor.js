@@ -59,14 +59,20 @@
         return true;
     }
     var offer_field_factory = function(offer_fields_conf) {
-        return function(offer_field_name, the_field_name, the_field_values) {
-            the_field_values = the_field_values || '';
-            var $input = $('<input type="text" name="' + the_field_name + '" ' +
-                           ' value="' + the_field_values + '" id="field__' + the_field_name + '"/>');
-            var $input_panel = $('<div class="offermaker_editor_field"><label for="field__' + the_field_name + '">' + offer_field_name +
-                                 '</label></div>');
-            $input_panel.append($input);
+        return function(offer_field_name, the_field_name, the_field_values, cell) {
             var the_field_conf = offer_fields_conf[offer_field_name];
+            if (Object.prototype.toString.call(the_field_values) !== '[object Array]') {
+                the_field_values = the_field_values === undefined ? [] : [the_field_values];
+            }
+            var $input = $('<input type="text" name="' + the_field_name + '" ' +
+                           ' id="field__' + the_field_name + '"/>');
+            if (cell) {
+                var $input_panel = $('<td class="offermaker_editor_field"></td>');
+            } else {
+                var $input_panel = $('<div class="offermaker_editor_field"><label for="field__' + the_field_name + '">' + offer_field_name +
+                         '</label></div>');
+            }
+            $input_panel.append($input);
             var handlers = {
                 'ITEM': function() {
                     $input.tokenfield({
@@ -93,7 +99,7 @@
                             $input.tokenfield('setTokens', filtered);
                         }
                     });
-                    // TODO usuwanie elementów spoza listy
+                    $input.tokenfield('setTokens', the_field_values.map(function(item) { return the_field_conf.keys[item]; }));
                 },
                 'ANYITEM': function() {
                     $input.tokenfield();
@@ -101,6 +107,14 @@
                 'RANGE': function() {
                     var MIN = the_field_conf.min;
                     var MAX = the_field_conf.max;
+
+                    var range_str = [
+                        'from <b>' + (MIN === undefined ? '-∞': MIN) + '</b>',
+                        'to <b>' + (MAX === undefined ? '∞': MAX) + '</b>'
+                    ];
+                    if (!cell && range_str.length > 0) {
+                        $input_panel.append('<p class="offermaker_editor_field_info">Values ' + range_str.join(' ') + '</p>');
+                    }
                     $input.tokenfield();
                     var first_item_cmp = function(a, b) {
                         if (a === b) { return 0; }
@@ -171,7 +185,7 @@
                             }
                         });
                     };
-                    var sum_ranges = function(ranges) {
+                    var sum_ranges = function(ranges, full_range) {
                         if (ranges.length == 0) {
                             return ranges;
                         }
@@ -196,14 +210,14 @@
                                 saved.max = en;
                             }
                         }
-                        if (saved.min !== MIN || saved.max !== MAX) {
+                        if (full_range || saved.min !== MIN || saved.max !== MAX) {
                             output.push({min: saved.min, max: saved.max});
                         }
                         return output;
                     }
-                    var get_range_tokens = function(tokens) {
+                    var get_range_tokens = function(tokens, full_range) {
                         var normalized_tokens = get_normalized_tokens(tokens);
-                        var sorted_tokens = sum_ranges(normalized_tokens);
+                        var sorted_tokens = sum_ranges(normalized_tokens, full_range);
                         return format_tokens(sorted_tokens);
                     };
                     $input.change(function(event) {
@@ -214,8 +228,13 @@
                         var tokens = get_range_tokens(input_tokens);
                         if (!tokens_list_equal($input.tokenfield('getTokens'), tokens)) {
                             $input.tokenfield('setTokens', tokens);
+                            if (tokens.length == 0) {
+                                $('#' + $input.attr('id') + '-tokenfield').val('');
+                            }
                         }
                     });
+
+                    $input.tokenfield('setTokens', format_tokens(the_field_values.map(function(item) { return { min: item[0], max: item[1] }})));
                 },
             }
             var handler = handlers[the_field_conf.type] || function() {};
@@ -225,12 +244,46 @@
     };
 
     var offer_variant_factory = function(offer_field, field_factory) {
-        return function(name, params) {
-            var $panel = $('<div id="variant_' + offer_field +'_' + name + '" class="offermaker_editor_panel">');
-            for (var i = 0; i < params.length; i++) {
-                var param = params[i];
-                $panel.append(field_factory(param, '__' + param, params[param]));
+        return function(name, params, variant, row) {
+            if (row) {
+                var $row = $('<tr id="variant_' + offer_field +'_' + name + '" class="offermaker_editor_panel">');
+                for (var i = 0; i < params.length; i++) {
+                    var param = params[i];
+                    var value = variant.params !== undefined ? variant.params[param] : undefined;
+                    $row.append(field_factory(param, '__' + param, value, true));
+                }
+                return $row;
+            } else {
+                var $panel = $('<div id="variant_' + offer_field +'_' + name + '" class="offermaker_editor_panel">');
+                for (var i = 0; i < params.length; i++) {
+                    var param = params[i];
+                    var value = variant.params !== undefined ? variant.params[param] : undefined;
+                    $panel.append(field_factory(param, '__' + param, value));
+                }
+                return $panel;
             }
+        };
+    };
+
+    var offer_group_table_factory = function(offer_fields_conf, variant_factory) {
+        return function(group, variants) {
+            if (variants.length == 0) { return; }
+            var $panel = $('<div id="group_' + group + '_panel" class="offermaker_group_panel">');
+            var $table = $('<table/>');
+            $panel.append($table);
+            var params = get_params_in_group(variants);
+
+            var $header_row = $('<tr>');
+            for (var i = 0; i < params.length; i++) {
+                $header_row.append($('<th>' + params[i] + '</th>'));
+            }
+            $table.append($header_row);
+
+            for (var i = 0; i < variants.length; i++) {
+                var $row = variant_factory(group + '__' + i, params, variants[i], true);
+                $table.append($row);
+            }
+
             return $panel;
         };
     };
@@ -251,13 +304,30 @@
         return output;
     };
 
-    var get_global_params = function(offer_fields_types, params_in_variants) {
+    var get_params_in_group = function(group) {
+        var output = {};
+        var output_list = []
+        for (var j = 0; j < group.length; j++) {
+            params = group[j]['params'];
+            for (var param in params) {
+                if (params.hasOwnProperty(param)) {
+                    if (output[param] === undefined) {
+                        output_list.push(param);
+                        output[param] = true;
+                    }
+                }
+            }
+        }
+        return output_list;
+    };
+
+    var get_global_params = function(offer_fields_conf, params_in_variants) {
         output = [];
-        for (var param in offer_fields_types) {
-            if (offer_fields_types.hasOwnProperty(param)) {
-                //if (params_in_variants[param] === undefined) {
+        for (var param in offer_fields_conf) {
+            if (offer_fields_conf.hasOwnProperty(param)) {
+                if (params_in_variants[param] === undefined) {
                     output.push(param);
-                //}
+                }
             }
         }
         return output;
@@ -268,25 +338,33 @@
     };
 
     window.offermaker.editor = function(field) {
-            var $input = $('input[name='+field+']');
-            var $editor_panel = $('#' + field + '_panel');
-            var offer = $.parseJSON($input.val());
+        var $input = $('input[name='+field+']');
+        var $editor_panel = $('#' + field + '_panel');
+        var offer = $.parseJSON($input.val());
 
-            var offer_fields_conf = get_offer_fields_conf($('#' + field + '_fields'), field);
-            var field_factory = offer_field_factory(offer_fields_conf);
-            var variant_factory = offer_variant_factory(field, field_factory);
-            var params_in_variants = get_params_in_variants(offer);
-            var global_params = get_global_params(offer_fields_conf, params_in_variants);
-            $editor_panel.append(variant_factory('default', global_params));
+        var offer_fields_conf = get_offer_fields_conf($('#' + field + '_fields'), field);
+        var field_factory = offer_field_factory(offer_fields_conf);
+        var variant_factory = offer_variant_factory(field, field_factory);
+        var group_table_factory = offer_group_table_factory(offer_fields_conf, variant_factory);
+        var params_in_variants = get_params_in_variants(offer);
+        var global_params = get_global_params(offer_fields_conf, params_in_variants);
+        $editor_panel.append(variant_factory('default', global_params, offer));
+        for (var i = 0; i < offer.variants.length; i++) {
 
-            var $btn = $('<input type="button" onclick="" value="GO!"/>');
-            $btn.click(function() {
-                $input.val('XXX');
-                return false;
-            });
-            $editor_panel.append($btn);
+            var $table_panel = group_table_factory(String(i), offer.variants[i]);
+            if ($table_panel !== undefined) {
+                $editor_panel.append($table_panel);
+            }
+        }
 
-            // TODO: utworzenie pól
-            // TODO: podpięcie zdarzeń i aktualizowanie value w polu
+        var $btn = $('<input type="button" onclick="" value="GO!"/>');
+        $btn.click(function() {
+            $input.val('XXX');
+            return false;
+        });
+        $editor_panel.append($btn);
+
+        // TODO: utworzenie pól
+        // TODO: podpięcie zdarzeń i aktualizowanie value w polu
     };
 })();

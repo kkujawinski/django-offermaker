@@ -20,6 +20,14 @@
     vertical-align: middle;
     min-height: 0;
 }
+.offermaker_editor_field p.offermaker_editor_field_info {
+    font-size: 0.8em;
+    width: 100px;
+    margin-top: -14px;
+    color: gray;
+    margin-left: 0;
+    padding-left: 0;
+}
 .offermaker_editor_field .tokenfield .token {
     height: 16px;
     padding-top: 2px;
@@ -29,4 +37,8 @@
 }
 .offermaker_editor_field .tokenfield .token-input {
     height: 12px;
+}
+td.offermaker_editor_field .form-control {
+    margin-left: 1px;
+    padding: 5px 0;
 }

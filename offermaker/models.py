@@ -31,12 +31,6 @@ class OfferMakerWidget(forms.Widget):
                                               ''.join(fields)),
                   u'<div{0}></div>'.format(flatatt({'class': 'offer_panel', 'id': '%s_panel' % name})),
                   u'<script type="text/javascript"> window.jQuery = django.jQuery; </script>',
-                  # css_tag("offermaker/textext/css/textext.core.css"),
-                  # css_tag("offermaker/textext/css/textext.plugin.tags.css"),
-                  # css_tag("offermaker/textext/css/textext.plugin.autocomplete.css"),
-                  # css_tag("offermaker/textext/css/textext.plugin.focus.css"),
-                  # css_tag("offermaker/textext/css/textext.plugin.prompt.css"),
-                  # css_tag("offermaker/textext/css/textext.plugin.arrow.css"),
 
                   css_tag("offermaker/editor.css"),
                   css_tag("http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"),
@@ -44,9 +38,6 @@ class OfferMakerWidget(forms.Widget):
 
                   js_tag("http://code.jquery.com/ui/1.10.3/jquery-ui.js"),
                   js_tag("http://sliptree.github.io/bootstrap-tokenfield/bootstrap-tokenfield/bootstrap-tokenfield.js"),
-                  js_tag("offermaker/textext/js/textext.core.js"),
-
-
                   js_tag("offermaker/editor.js"),
                   u'<script type="text/javascript">offermaker.editor("%s");</script>' % name,
                   ]
