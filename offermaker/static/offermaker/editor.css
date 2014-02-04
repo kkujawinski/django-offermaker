@@ -38,7 +38,38 @@
 .offermaker_editor_field .tokenfield .token-input {
     height: 12px;
 }
+table.offermaker_editor_table {
+    margin-top: 5px;
+    clear: both;
+}
+.editor_selector_panel label {
+    width: auto;
+}
+.editor_selector_panel {
+    margin-top: 20px;
+    padding-bottom: 5px;
+}
+table.offermaker_editor_table td, table.offermaker_editor_table th{
+    border: 1px solid #eee;
+}
+table.offermaker_editor_table th {
+    color: #666;
+    font-weight: normal;
+}
+table.offermaker_editor_table p.offermaker_editor_field_info {
+    font-size: 0.7em;
+}
+td.offermaker_editor_field {
+    padding: 0 5px;
+    max-width: 16em;
+}
 td.offermaker_editor_field .form-control {
     margin-left: 1px;
-    padding: 5px 0;
+    border: none;
+}
+div.offermaker_editor_field_container {
+    margin: 3px 7px 3px -3px;
+}
+.variant_offer_default {
+    margin-left: 10em;
 }
