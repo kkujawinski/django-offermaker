@@ -73,3 +73,10 @@ div.offermaker_editor_field_container {
 .variant_offer_default {
     margin-left: 10em;
 }
+.group_addlink {
+    margin: 20px 7px;
+}
+.group_deletelink {
+    clear: both;
+    padding-top: 5px;
+}

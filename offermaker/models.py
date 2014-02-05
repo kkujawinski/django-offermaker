@@ -33,11 +33,11 @@ class OfferMakerWidget(forms.Widget):
                   u'<script type="text/javascript"> window.jQuery = django.jQuery; </script>',
 
                   css_tag("offermaker/editor.css"),
-                  css_tag("http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"),
-                  css_tag("http://sliptree.github.io/bootstrap-tokenfield/bootstrap-tokenfield/bootstrap-tokenfield.css"),
+                  css_tag("offermaker/jquery-ui.min.css"),
+                  css_tag("offermaker/bootstrap-tokenfield.min.css"),
 
-                  js_tag("http://code.jquery.com/ui/1.10.3/jquery-ui.js"),
-                  js_tag("http://sliptree.github.io/bootstrap-tokenfield/bootstrap-tokenfield/bootstrap-tokenfield.js"),
+                  js_tag("offermaker/jquery-ui.min.js"),
+                  js_tag("offermaker/bootstrap-tokenfield.min.js"),
                   js_tag("offermaker/editor.js"),
                   u'<script type="text/javascript">offermaker.editor("%s");</script>' % name,
                   ]
