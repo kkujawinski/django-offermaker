@@ -26,7 +26,7 @@ class OfferMakerWidget(forms.Widget):
 
         form_fields = self.attrs['form_object'].fields
         fields = [render_widget_for_field(field_name, field) for field_name, field in form_fields.items()]
-        output = [forms.HiddenInput().render(name, json.dumps(value)),
+        output = [forms.HiddenInput().render(name, json.dumps(value if value else {})),
                   u'<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '%s_fields' % name}),
                                               ''.join(fields)),
                   u'<div{0}></div>'.format(flatatt({'class': 'offer_panel', 'id': '%s_panel' % name})),
@@ -73,7 +73,7 @@ class OfferJSONField(models.Field):
     def to_python(self, value):
         if not isinstance(value, (unicode, basestring)):
             return value
-        return json.loads(value)
+        return json.loads(value) if value else {}
 
     def value_to_string(self, obj):
         return json.dumps(self._get_val_from_obj(obj))

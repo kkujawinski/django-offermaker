@@ -390,6 +390,7 @@
                 },
                 'ANYITEM': function () {
                     $input.tokenfield();
+                    $input.tokenfield('setTokens', field_values);
                     return $input;
                 },
                 'RANGE': function () {
@@ -687,6 +688,7 @@
         $editor_panel = $('#' + field + '_panel');
 
         offer = JSON.parse($input.val());
+        offer = $.isEmptyObject(offer) ? {variants: [], params: {}} : offer;
         fields_conf = get_fields_conf($('#' + field + '_fields'), field);
         global_params = get_global_params(fields_conf, get_params_in_variants(offer));
         offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
