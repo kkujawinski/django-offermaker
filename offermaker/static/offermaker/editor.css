@@ -1,13 +1,13 @@
-.offermaker_editor_panel {
+.offermaker_panel {
     margin-left: 10em;
 }
-.offermaker_editor_field {
+.offermaker_field {
     max-width: 20em;
 }
-.offermaker_editor_field label {
+.offermaker_field label {
     width: 9em;
 }
-.offermaker_editor_field .form-control {
+.offermaker_field .form-control {
     border: 1px solid #ccc;
     margin-left: 11em;
     margin-bottom: 0.3em;
@@ -20,7 +20,7 @@
     vertical-align: middle;
     min-height: 0;
 }
-.offermaker_editor_field p.offermaker_editor_field_info {
+.offermaker_field p.offermaker_field_info {
     font-size: 0.8em;
     width: 100px;
     margin-top: -14px;
@@ -28,17 +28,17 @@
     margin-left: 0;
     padding-left: 0;
 }
-.offermaker_editor_field .tokenfield .token {
+.offermaker_field .tokenfield .token {
     height: 16px;
     padding-top: 2px;
 }
-.offermaker_editor_field .tokenfield .token .close {
+.offermaker_field .tokenfield .token .close {
     line-height: 1em;
 }
-.offermaker_editor_field .tokenfield .token-input {
+.offermaker_field .tokenfield .token-input {
     height: 12px;
 }
-table.offermaker_editor_table {
+table.offermaker_table {
     margin-top: 5px;
     clear: both;
 }
@@ -49,25 +49,25 @@ table.offermaker_editor_table {
     margin-top: 20px;
     padding-bottom: 5px;
 }
-table.offermaker_editor_table td, table.offermaker_editor_table th{
+table.offermaker_table td, table.offermaker_table th{
     border: 1px solid #eee;
 }
-table.offermaker_editor_table th {
+table.offermaker_table th {
     color: #666;
     font-weight: normal;
 }
-table.offermaker_editor_table p.offermaker_editor_field_info {
+table.offermaker_table p.offermaker_field_info {
     font-size: 0.7em;
 }
-td.offermaker_editor_field {
+td.offermaker_cell {
     padding: 0 5px;
     max-width: 16em;
 }
-td.offermaker_editor_field .form-control {
+td.offermaker_cell .form-control {
     margin-left: 1px;
     border: none;
 }
-div.offermaker_editor_field_container {
+div.offermaker_field_container {
     margin: 3px 7px 3px -3px;
 }
 .variant_offer_default {
