@@ -49,7 +49,7 @@ table.offermaker_table {
     margin-top: 20px;
     padding-bottom: 5px;
 }
-table.offermaker_table td, table.offermaker_table th{
+table.offermaker_table td, table.offermaker_table th {
     border: 1px solid #eee;
 }
 table.offermaker_table th {
@@ -69,9 +69,6 @@ td.offermaker_cell .form-control {
 }
 div.offermaker_field_container {
     margin: 3px 7px 3px -3px;
-}
-.variant_offer_default {
-    margin-left: 10em;
 }
 .group_addlink {
     margin: 20px 7px;

@@ -350,7 +350,7 @@
             }
             $input = $('<input type="text" name="' + field_name + '" id="field__' + field_name + '"/>');
             if (cell) {
-                $input_panel = $('<td class="offermaker_cell field_' + field_id + '"></td>');
+                $input_panel = $('<td class="offermaker_cell offermaker_field field_' + field_id + '"></td>');
                 $input_container = $('<div class="offermaker_field_container"></div>');
                 $input_panel.append($input_container);
                 $input_container.append($input);

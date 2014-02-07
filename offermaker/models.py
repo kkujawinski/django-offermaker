@@ -29,7 +29,8 @@ class OfferMakerWidget(forms.Widget):
         output = [forms.HiddenInput().render(name, json.dumps(value if value else {})),
                   u'<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '%s_fields' % name}),
                                               ''.join(fields)),
-                  u'<div{0}></div>'.format(flatatt({'class': 'offer_panel', 'id': '%s_panel' % name})),
+                  u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
+                                                             'id': '%s_panel' % name})),
                   u'<script type="text/javascript"> window.jQuery = django.jQuery; </script>',
 
                   css_tag("offermaker/editor.css"),
