@@ -107,6 +107,37 @@ class OfferMakerTest(TestCase):
         ]
     }
 
+    conflicted_offer = {
+        'variants': [
+            [
+                {
+                    'params': {
+                        'product': 'PROD1',
+                        'crediting_period': ['12']
+                    }
+                }, {
+                    'params': {
+                        'product': 'PROD2',
+                        'crediting_period': ['24']
+                    },
+                }
+            ],
+            [
+                {
+                    'params': {
+                        'product': 'PROD1',
+                        'crediting_period': ['24']
+                    }
+                }, {
+                    'params': {
+                        'product': 'PROD2',
+                        'crediting_period': ['12']
+                    },
+                }
+            ],
+        ]
+    }
+
     class DemoOfferMakerForm(DjangoFormMockup):
         def __init__(self):
             super_init = super(OfferMakerTest.DemoOfferMakerForm, self).__init__
@@ -121,6 +152,7 @@ class OfferMakerTest(TestCase):
         cls.core_1 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_1)
         cls.core_2 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_2)
         cls.core_3 = OfferMakerCore(cls.DemoOfferMakerForm, cls.example_offer_3)
+        cls.conflicted = OfferMakerCore(cls.DemoOfferMakerForm, cls.conflicted_offer)
 
     def test_empty_request(self):
         self.assertEqual(self.core_1.process({}),
@@ -183,3 +215,10 @@ class OfferMakerTest(TestCase):
                          'crediting_period': Restriction('crediting_period', ["12", "24", "36", "48"]),
                          'interest_rate': Restriction('interest_rate', [(1, 5)]),
                          'product': Restriction('product', ['PROD1', 'PROD2'])})
+
+    def test_field_conflicts(self):
+        self.assertEqual(self.conflicted.get_conflicts(),
+                         {'1-1': ['2'],  '1-2': ['2'], '2-1': ['1'], '2-2': ['1']})
+
+    def test_field_conflicts_noconflict(self):
+        self.assertEqual(self.core_2.get_conflicts(), {})

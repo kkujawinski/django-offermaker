@@ -4,7 +4,9 @@ from django import forms
 from django.forms.util import flatatt
 from django.utils.html import mark_safe
 from django.templatetags.static import static
+from django.core.exceptions import ValidationError
 import offermaker
+
 
 select_widget = forms.Select()
 
@@ -26,7 +28,9 @@ class OfferMakerWidget(forms.Widget):
 
         form_fields = self.attrs['form_object'].fields
         fields = [render_widget_for_field(field_name, field) for field_name, field in form_fields.items()]
-        output = [forms.HiddenInput().render(name, json.dumps(value if value else {})),
+        value = value if value else {}
+        value = value if isinstance(value, basestring) else json.dumps(value)
+        output = [forms.HiddenInput().render(name, value),
                   u'<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '%s_fields' % name}),
                                               ''.join(fields)),
                   u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
@@ -84,3 +88,10 @@ class OfferJSONField(models.Field):
                     'form_object': self.form_object}
         defaults.update(kwargs)
         return super(OfferJSONField, self).formfield(**defaults)
+
+    def validate(self, value, model_instance):
+        offer = offermaker.OfferMakerCore(self.form_object, value)
+        json_variants = [{'variant': key, 'groups': val} for key, val in offer.get_conflicts().items()]
+        if json_variants:
+            raise ValidationError("Some variants are not compatible with group of variants.|CONFLICTED-VARIANT|%s" %
+                                  json.dumps(json_variants))

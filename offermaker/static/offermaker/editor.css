@@ -77,3 +77,14 @@ div.offermaker_field_container {
     clear: both;
     padding-top: 5px;
 }
+.validation_info {
+    padding-left: 16px;
+    padding-bottom: 16px;
+    background: url(images/icon_error.gif) no-repeat;
+}
+.offermaker_conflicted_variant {
+    background: #F1BDBD;
+}
+.offermaker_conflicted_group table {
+    background: #F8E1E1;
+}

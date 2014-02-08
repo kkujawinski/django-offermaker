@@ -24,7 +24,8 @@
         revert_not_selected_fields,
         remove_selected_field,
         get_group_column_operation_factory,
-        tables_factory;
+        tables_factory,
+        mark_incompatible_variants;
 
 
     window.offermaker = window.offermaker || {};
@@ -287,7 +288,7 @@
 
     get_offer_encoder = function (offer, $offer_field, $editor_panel, fields_conf) {
         var DEFAULT_FIELD_REGEX = /default__(\w+)/,
-            VARIANT_FIELD_REGEX = /[0-9]+__[0-9]+__(\w+)/;
+            VARIANT_FIELD_REGEX = /[0-9]+-[0-9]+__(\w+)/;
 
         return function () {
             // modyfikacja offer
@@ -429,7 +430,10 @@
                     });
                     $input.tokenfield('setTokens', format_range_tokens(
                         field_values.map(
-                            function (item) { return { min: item[0], max: item[1] }; }
+                            function (item) {
+                                return { min: item[0] === null ? -Infinity: item[0],
+                                         max: item[1] === null ? Infinity : item[1] };
+                            }
                         )
                     ));
                     return $input;
@@ -460,7 +464,7 @@
                     value = variant.params !== undefined ? variant.params[param] : undefined;
                     $row.append(field_factory(param, name + '__' + param, value, true));
                 }
-                $td_delete = $('<td class="offermaker_cell_delete"><a href="#" class="deletelink"/></td>');
+                $td_delete = $('<td class="offermaker_cell_operations"><a href="#" class="deletelink"/></td>');
                 $('a', $td_delete).click(function () { $row.remove(); return false; });
                 $row.append($td_delete);
                 return $row;
@@ -497,7 +501,7 @@
             if (variants.length === 0) { return; }
             params = get_params_for_group(variants);
 
-            $panel = $('<div class="group_' + group + '_panel" class="offermaker_group_panel">');
+            $panel = $('<div class="group_' + group + '" class="offermaker_group_panel">');
             $panel.append(selector_panel_factory(group, params));
             $table = $('<table class="offermaker_table"/>');
             $panel.append($table);
@@ -510,7 +514,7 @@
             $table.append($header_row);
 
             for (i = 0; i < variants.length; i += 1) {
-                $table.append(variant_factory(group + '__' + i, params, variants[i], true));
+                $table.append(variant_factory(group + '-' + (i + 1) , params, variants[i], true));
             }
 
             $add_row = $('<tr class="offermaker_summary"><td colspan="' + String(total_fields + 1) + '"><a href="#" class="addlink">Add variant</a></td></tr>');
@@ -522,7 +526,7 @@
                     }).map(function () {
                         return $(this).prop('name').replace(SELECTOR_FIELD_REGEX, '$1');
                     });
-                variant_factory(group + '__' + i, new_params, {}, true).insertBefore($('tr:last', $table));
+                variant_factory(group + '-' + i, new_params, {}, true).insertBefore($('tr:last', $table));
                 i += 1;
                 return false;
             });
@@ -617,7 +621,7 @@
 
     get_group_column_operation_factory = function (fields_conf, field_factory, $editor_panel) {
         return function (operation, group, field) {
-            var $table = $editor_panel.find('.group_' + group + '_panel table'),
+            var $table = $editor_panel.find('.group_' + group + ' table'),
                 trs,
                 last_index;
             if (operation === 'add') {
@@ -638,7 +642,7 @@
                 });
                 remove_selected_field(field, $editor_panel);
             } else if (operation === 'remove') {
-                $table.find('td.field_' + field + ', th.field_' + field).remove();
+                $('td.field_' + field + ', th.field_' + field, $table).remove();
                 revert_not_selected_fields(fields_conf, $editor_panel, field_factory);
             }
         };
@@ -652,7 +656,7 @@
 
         $editor_panel.append(variant_factory('default', global_params, offer));
         for (i = 0; i < offer.variants.length; i += 1) {
-            $table_panel = table_factory(String(i), offer.variants[i]);
+            $table_panel = table_factory(String(i + 1), offer.variants[i]);
             if ($table_panel !== undefined) {
                 $editor_panel.append($table_panel);
             }
@@ -670,11 +674,48 @@
         $editor_panel.append($add_group_link);
     };
 
+    mark_incompatible_variants = function (conflicted_variants, $editor_panel) {
+        $.each(conflicted_variants, function () {
+            var $row,
+                groups_str,
+                $conflicted_variant,
+                conflicted_groups_classes,
+                $conflicted_groups;
+
+            $row = $('.variant__' + this['variant'], $editor_panel);
+            $conflicted_variant = $('<span href="#" class="validation_info variant_conflicted_info"/>');
+            groups_str = this['groups'].join(', ');
+            $conflicted_variant.prop('title', 'Variant conflicted with following groups of variants: ' + groups_str);
+            conflicted_groups_classes = $($.map(this['groups'], function (item) {
+                return '.group_' + item;
+            }));
+            $conflicted_groups = $($.makeArray(conflicted_groups_classes).join(', '), $editor_panel);
+            $row.addClass('offermaker_conflicted_variant');
+
+            $conflicted_variant.hover(
+                function () {
+                    $conflicted_groups.addClass('offermaker_conflicted_group');
+                }, function () {
+                    $conflicted_groups.removeClass('offermaker_conflicted_group');
+                });
+            $('.offermaker_variant :input[id^="field__"]', $editor_panel).one('change',
+                function () {
+                    $('.variant_conflicted_info', $editor_panel).remove();
+                    $('.offermaker_conflicted_variant', $editor_panel).removeClass('offermaker_conflicted_variant');
+                }
+            );
+
+            $('.offermaker_cell_operations', $row).append($conflicted_variant);
+        });
+
+    };
+
     window.offermaker.editor = function (field) {
         var $input,
             $editor_panel,
             offer,
             fields_conf,
+            $field_panel,
             global_params,
             offer_encoder,
             field_factory,
@@ -700,5 +741,21 @@
                                                                 group_column_operation_factory, $editor_panel);
         table_factory = get_table_factory(fields_conf, variant_factory, selector_panel_factory);
         tables_factory($editor_panel, table_factory, variant_factory, global_params, offer);
+
+        $field_panel = $editor_panel.parents('.field-' + field);
+        if ($field_panel.hasClass('errors')) {
+            $('.errorlist li', $field_panel).each(function () {
+                var $this = $(this),
+                    splitted,
+                    error_data;
+                splitted = $this.text().split('|');
+                $this.text(splitted[0]);
+                if (splitted[1] === 'CONFLICTED-VARIANT') {
+                    error_data = JSON.parse(splitted[2] || '[]');
+                    mark_incompatible_variants(error_data, $editor_panel);
+                }
+            });
+            console.log('Error validation!');
+        }
     };
 }());

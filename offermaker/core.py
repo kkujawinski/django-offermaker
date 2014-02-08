@@ -1,4 +1,5 @@
 # coding=utf-8
+from collections import defaultdict
 from copy import deepcopy, copy
 from __builtin__ import enumerate
 from django.core.exceptions import ValidationError
@@ -445,8 +446,12 @@ class Restriction(object):
 class OfferMakerCore(object):
 
     def __init__(self, form, offer):
-        self.form = form
-        self.form_object = form()
+        if isinstance(form, type):
+            self.form = form
+            self.form_object = form()
+        else:
+            self.form = form.__class__
+            self.form_object = form
         self.offer = None
         self.full_restrictions = {}  # RANGE or ITEM field
         self.groups_to_params = {}
@@ -514,6 +519,32 @@ class OfferMakerCore(object):
         self._fill_variants_with_full_restrictions(varianted_groups)
         return sorted(varianted_groups, cmp=RestrictionSet.fields_cmp(fields))
 
+    def get_conflicts(self):
+        groups_full_restrictions = OfferMakerCore._get_flatten_groups(self.offer)
+        self._fill_group_variants_with_full_restrictions(groups_full_restrictions)
+        groups_full_restrictions = groups_full_restrictions[1:]
+        output = {}
+        for gi, group_x in enumerate(groups_full_restrictions, 1):
+            for vi, variant_x in enumerate(group_x, 1):
+                conflicted_groups = []
+                for gj, group_y in enumerate(groups_full_restrictions, 1):
+                    if gj == gi:
+                        continue
+                    if not group_y:
+                        continue
+                    expected_params = frozenset(variant_x.keys()).intersection(frozenset(group_y[0].keys()))
+                    for variant_y in group_y:
+                        if expected_params == frozenset((variant_x * variant_y).keys()):
+                            any_matched = True
+                            break
+                    else:
+                        any_matched = False
+                    if not any_matched:
+                        conflicted_groups.append(str(gj))
+                if conflicted_groups:
+                    output['%s-%s' % (gi, vi)] = conflicted_groups
+        return output
+
     def _configure(self, offer):
         self.offer = OfferMakerCore._parse_offer(offer)
         self.full_matching_variants = OfferMakerCore._get_matching_variants(self.offer, {})
@@ -537,7 +568,7 @@ class OfferMakerCore(object):
         Normalizing two ways of defining groups of variants. 1. with separated groups, 2. with one/default group,
         Parse and validate restrictions
         """
-        if 'variants' in the_variant:
+        if 'variants' in the_variant and the_variant['variants']:
             output = []
             if isinstance(the_variant['variants'][0], dict):
                 groups = [the_variant['variants']]
