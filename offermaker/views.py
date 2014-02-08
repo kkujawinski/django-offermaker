@@ -2,6 +2,8 @@ import json
 import re
 
 from django.http import HttpResponse
+from django import forms
+from django.forms.forms import NON_FIELD_ERRORS
 
 from offermaker.core import OfferMakerCore, NoMatchingVariantsException
 
@@ -49,6 +51,16 @@ class OfferMakerDispatcher(object):
     def handle_request(self, request):
         if request.method == 'POST':
             form = self.form(request.POST)
+            old_full_clean = form.full_clean
+
+            def new_full_clean(*args, **kwargs):
+                old_full_clean(*args, **kwargs)
+                try:
+                    self.offer_core.process(request.POST)
+                except NoMatchingVariantsException:
+                    form._errors[NON_FIELD_ERRORS] = form.error_class(['Variants not matching with given values'])
+
+            form.full_clean = new_full_clean
             return self.handler_post(form)
         else:
             if request.META.get('HTTP_X_OFFER_FORM_XHR') == '1':

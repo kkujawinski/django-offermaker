@@ -1,5 +1,4 @@
 # coding=utf-8
-from collections import defaultdict
 from copy import deepcopy, copy
 from __builtin__ import enumerate
 from django.core.exceptions import ValidationError

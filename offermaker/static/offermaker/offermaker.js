@@ -43,21 +43,13 @@
 
         ajax_extra_params = options.ajax_extra_params || function (params) { return params; };
         error_alert_factory = options.error_alert_factory || function (msg) {
-            var $error = $('<div class="alert alert-danger alert-dismissable">'
-                           + '<button type="button" class="close" '
-                           + 'data-dismiss="alert" aria-hidden="true">&times;</button>'
-                           + msg + '</div>');
+            var $error = $('<p class="error"><span>' + msg + '</span></p>');
             $('.alert-placeholder', $form).append($error);
             return $error;
         };
         tooltip_factory = options.tooltip_factory || function ($field, msg) {
-            var $tooltip = $('<span class="input-group-addon glyphicon glyphicon-info-sign" title="' + msg + '"/>');
+            var $tooltip = $('<p class="infotip">' + msg + '</p>');
             $field.parent().append($tooltip);
-            $(function () {
-                if ($tooltip.tooltip) {
-                    $tooltip.tooltip({'placement': 'bottom', 'container': 'body'});
-                }
-            });
             return $tooltip;
         };
         msgs = options.msgs || {
@@ -179,7 +171,7 @@
             var value,
                 $field;
 
-            if (field_data.field  !== 'ALL') {
+            if (field_data.field  !== '__all__') {
                 $field = $(':input[name=' + field_data.field + ']');
                 value = field_data.value || field_data.fixed;
                 if (value !== undefined && !target_empty) {
@@ -321,7 +313,7 @@
                     var i,
                         ALL;
                     for (i = 0; i < data.length; i += 1) {
-                        if (data[i].field === 'ALL') {
+                        if (data[i].field === '__all__') {
                             ALL = data[i];
                         }
                     }
