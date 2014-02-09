@@ -2,7 +2,6 @@
     "use strict";
 
     var $ = jQuery,
-        SELECTOR_FIELD_REGEX = /selector__[\d+]__(\w+)/,
         TOKENS_SEP = ', ',
 
         array_has,
@@ -287,9 +286,6 @@
     };
 
     get_offer_encoder = function (offer, $offer_field, $editor_panel, fields_conf) {
-        var DEFAULT_FIELD_REGEX = /default__(\w+)/,
-            VARIANT_FIELD_REGEX = /[0-9]+-[0-9]+__(\w+)/;
-
         return function () {
             // modyfikacja offer
             var field_name,
@@ -300,7 +296,7 @@
                 var $this = $(this);
                 field_value = $this.val();
                 if (field_value !== undefined && field_value !== '') {
-                    field_name = $this.prop('name').replace(DEFAULT_FIELD_REGEX, '$1');
+                    field_name = $this.attr('data-field');
                     new_global_params[field_name] = fields_conf[field_name].str2value(field_value);
                 }
             });
@@ -316,7 +312,7 @@
                             the_field_value;
 
                         $the_field = $(':input[id^="field__"]', $(cell_item));
-                        the_field_name = $the_field.prop('name').replace(VARIANT_FIELD_REGEX, '$1');
+                        the_field_name = $the_field.attr('data-field');
                         the_field_value = $the_field.val().trim();
                         if (the_field_value !== '') {
                             new_params[the_field_name] = fields_conf[the_field_name].str2value(the_field_value);
@@ -349,7 +345,8 @@
             if (Object.prototype.toString.call(field_values) !== '[object Array]') {
                 field_values = field_values === undefined ? [] : [field_values];
             }
-            $input = $('<input type="text" name="' + field_name + '" id="field__' + field_name + '"/>');
+            $input = $('<input type="text" name="' + field_name + '" id="field__' + field_name + '" ' +
+                        'data-field="' + field_id + '"/>');
             if (cell) {
                 $input_panel = $('<td class="offermaker_cell offermaker_field field_' + field_id + '"></td>');
                 $input_container = $('<div class="offermaker_field_container"></div>');
@@ -480,7 +477,8 @@
     };
 
     get_th_field = function (param, fields_conf) {
-        return $('<th class="field_' + param + '">' + param + (fields_conf[param].infotip || '') + '</th>');
+        return $('<th class="field_' + param + '" data-field="' + param + '">' + param +
+                (fields_conf[param].infotip || '') + '</th>');
     };
 
     get_table_factory = function (fields_conf, variant_factory, selector_panel_factory) {
@@ -521,11 +519,7 @@
             $editor_panel = $('.editor_selector_panel', $table.parent());
             $table.append($add_row);
             $('a', $add_row).click(function () {
-                var new_params = $(':input', $editor_panel).filter(function () {
-                        return $(this).is(':checked');
-                    }).map(function () {
-                        return $(this).prop('name').replace(SELECTOR_FIELD_REGEX, '$1');
-                    });
+                var new_params = $('th', $table).map(function (index, item) { return $(item).attr('data-field'); });
                 variant_factory(group + '-' + i, new_params, {}, true).insertBefore($('tr:last', $table));
                 i += 1;
                 return false;
@@ -561,7 +555,7 @@
                     field_id = 'selector__' + group + '__' + param;
                     checked = array_has(selected_params, param) === false ? '' : ' checked ';
                     $input = $('<input type="checkbox" ' + checked + ' name="' + field_id + '" id="id__' +
-                                    field_id + '"/>');
+                                    field_id + '" data-field="' + param + '"/>');
                     $selector_field = $('<label for="id_' + field_id + '"/>');
                     $selector_field.append($input);
                     $selector_field.append(String(param));
@@ -595,7 +589,7 @@
             var $this = $(this),
                 field;
             if ($this.is(':checked')) {
-                field = $this.prop('name').replace(SELECTOR_FIELD_REGEX, '$1');
+                field = $this.prop('data-field');
                 selected_fields[field] = true;
             }
         });
@@ -636,7 +630,7 @@
                     if (index === 0) {
                         get_th_field(field, fields_conf).insertBefore($('th:last', $row));
                     } else {
-                        $cell = field_factory(field, group + '__' + String(index - 1) + '__' + field, undefined, true);
+                        $cell = field_factory(field, group + '-' + String(index - 1) + '__' + field, undefined, true);
                         $cell.insertBefore($('td:last', $row));
                     }
                 });
@@ -698,7 +692,8 @@
                 }, function () {
                     $conflicted_groups.removeClass('offermaker_conflicted_group');
                 });
-            $('.offermaker_variant :input[id^="field__"]', $editor_panel).one('change',
+
+            $('.offermaker_variant :input[id^="field__"], a.deletelink', $editor_panel).one('click',
                 function () {
                     $('.variant_conflicted_info', $editor_panel).remove();
                     $('.offermaker_conflicted_variant', $editor_panel).removeClass('offermaker_conflicted_variant');
