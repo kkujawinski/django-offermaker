@@ -37,11 +37,19 @@ def offermaker_css():
     return u''
 
 @register.simple_tag
-def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, table_class=''):
+def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, **attrs):
     TableCell = namedtuple('TableCell', ['value', 'colspan', 'rowspan'])
     SingleCell = TableCell('<value>', 1, 1)
     HeaderCell = namedtuple('HeaderCell', ['name', 'value'])
     _HeaderCell = HeaderCell('<name>', None)
+    HtmlTag = namedtuple('HtmlTag', ['tag', 'attrs'])
+
+    def _format_attrs(attrs):
+        if not attrs:
+            return ''
+        return ' ' + ' '.join('%s="%s"' % (k, str(v)) for k, v in attrs.iteritems())
+
+    _format_tag_item = lambda tag: '<%s%s>' % (tag.tag, _format_attrs(tag.attrs)) if isinstance(tag, HtmlTag) else tag
 
     object_fields = core_object.form_object.fields
     if fields:
@@ -51,39 +59,54 @@ def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, table
 
     summary = core_object.offer_summary(fields=fields)
     if orientation == 'HORIZONTAL':
-        table_output = []
+        table = []
         for field in fields:
-            column_output = [_HeaderCell._replace(name=object_fields[field].label)]
+            column = [_HeaderCell._replace(name=object_fields[field].label)]
             for row in summary:
                 field_value = row[field]
-                prev_cell_ref = len(column_output) - 1
-                prev_cell = column_output[prev_cell_ref]
+                prev_cell_ref = len(column) - 1
+                prev_cell = column[prev_cell_ref]
                 if isinstance(prev_cell, int):
                     prev_cell_ref = prev_cell
-                    prev_cell = column_output[prev_cell_ref]
+                    prev_cell = column[prev_cell_ref]
                 if prev_cell.value == field_value:
-                    column_output[prev_cell_ref] = prev_cell._replace(rowspan=prev_cell.rowspan + 1)
-                    column_output.append(prev_cell_ref)
+                    column[prev_cell_ref] = prev_cell._replace(rowspan=prev_cell.rowspan + 1)
+                    column.append(prev_cell_ref)
                 else:
-                    column_output.append(SingleCell._replace(value=field_value))
-            table_output.append(column_output)
+                    column.append(SingleCell._replace(value=field_value))
+            table.append(column)
 
-        output = ['<table border="1" class="%s">' % table_class]
-        for i in xrange(max(len(i) for i in table_output)):
-            output.append('<tr>')
-            for column in table_output:
+        output_tags = [HtmlTag('table', attrs)]
+        tr_attrs = [{}] * len(fields)
+        for i in xrange(max(len(i) for i in table)):
+            row_fields = []
+            for j, column in enumerate(table):
                 try:
                     cell = column[i]
                     if isinstance(cell, HeaderCell):
-                        output.append('<th>%(name)s</th>' % cell._asdict())
+                        row_fields.append(HtmlTag('th', ''))
+                        row_fields.append(cell.name)
+                        row_fields.append(HtmlTag('/th', ''))
                     elif isinstance(cell, TableCell):
-                        cell_params = cell._asdict()
-                        cell_params['value'] = cell_params['value'].format_str(object_fields)
-                        output.append('<td colspan="%(colspan)d" rowspan="%(rowspan)d">%(value)s</td>'
-                                      % cell_params)
+                        attrs = {'colspan': cell.colspan, 'rowspan': cell.rowspan}
+                        tr_attrs[j] = attrs
+                        row_fields.append(HtmlTag('td', attrs))
+                        row_fields.append(cell.value.format_str(object_fields))
+                        row_fields.append(HtmlTag('/td', ''))
                 except IndexError:
                     pass
-            output.append('</tr>')
-        output.append('</table>')
-        return ''.join(output)
+
+            if row_fields:
+                output_tags.append(HtmlTag('tr', ''))
+                output_tags.extend(row_fields)
+                output_tags.append(HtmlTag('/tr', ''))
+                last_row_attrs = tr_attrs
+            else:
+                for attrs in last_row_attrs:
+                    attrs['rowspan'] -= 1
+
+        output_tags.append(HtmlTag('/table', ''))
+
+        return ''.join(_format_tag_item(tag) for tag in output_tags)
+
     return u'TABLE'
