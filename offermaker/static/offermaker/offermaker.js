@@ -40,7 +40,6 @@
         $form = $(form);
         $inputs = $(':input:not([type=hidden])', $form);
         $global_error = undefined;
-        break_current_variant = false;
 
         ajax_extra_params = options.ajax_extra_params || function (params) { return params; };
 
@@ -151,7 +150,6 @@
             return false;
         };
         detect_mobile = function () {
-            return true;
             return (navigator.userAgent.match(/Android/i)
                     || navigator.userAgent.match(/webOS/i)
                     || navigator.userAgent.match(/iPhone/i)
@@ -249,7 +247,6 @@
         restrictions_reset = function () {
             $('.om-not-available', $form).removeClass('om-not-available');
             $('.om-tooltip', $form).remove();
-            break_current_variant = false;
         };
         ranges_match = function (ranges, val) {
             var i,
@@ -329,7 +326,8 @@
             var $target,
                 target_empty,
                 event_initiator,
-                prepared_data;
+                prepared_data,
+                break_current_variant = false;
 
             if (success_handler === undefined) {
                 success_handler = function () { return undefined; };
