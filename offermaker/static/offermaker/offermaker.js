@@ -21,6 +21,7 @@
             loader_off,
             prepare_data,
             array_has,
+            detect_mobile,
             handle_select_field,
             handle_text_field,
             handle_field,
@@ -42,16 +43,46 @@
         break_current_variant = false;
 
         ajax_extra_params = options.ajax_extra_params || function (params) { return params; };
-        error_alert_factory = options.error_alert_factory || function (msg) {
-            var $error = $('<p class="error"><span>' + msg + '</span></p>');
-            $('.alert-placeholder', $form).append($error);
-            return $error;
-        };
-        tooltip_factory = options.tooltip_factory || function ($field, msg) {
-            var $tooltip = $('<p class="infotip">' + msg + '</p>');
-            $field.parent().append($tooltip);
-            return $tooltip;
-        };
+
+        if (options.bootstrap3) {
+            error_alert_factory = options.error_alert_factory || function (msg) {
+                var $error = $('<div class="alert alert-danger alert-dismissable">'
+                               + '<button type="button" class="close" '
+                               + 'data-dismiss="alert" aria-hidden="true">&times;</button>'
+                               + msg + '</div>');
+                $('.alert-placeholder', $form).append($error);
+                return $error;
+            };
+            tooltip_factory = options.tooltip_factory || function ($field, msg) {
+                var tooltip;
+                if (detect_mobile()) {
+                    var $tooltip = $('<p class="infotip">' + msg + '</p>');
+                    $field.parent().append($tooltip);
+                } else {
+                    $tooltip = $('<span class="input-group-addon glyphicon glyphicon-info-sign" title="' + msg + '"/>');
+                    $field.parent().append($tooltip);
+                    $(function () {
+                        if ($tooltip.tooltip) {
+                            $tooltip.tooltip({'placement': 'bottom', 'container': 'body'});
+                        }
+                    });
+                }
+                return $tooltip;
+            };
+        } else {
+            error_alert_factory = options.error_alert_factory || function (msg) {
+                var $error = $('<p class="error"><span>' + msg + '</span></p>');
+                $('.alert-placeholder', $form).append($error);
+                return $error;
+            };
+            tooltip_factory = options.tooltip_factory || function ($field, msg) {
+                var $tooltip = $('<p class="infotip">' + msg + '</p>');
+                $field.parent().append($tooltip);
+                return $tooltip;
+            };
+        }
+
+
         msgs = options.msgs || {
             'NO_VARIANTS': 'No matching variants',
             'INFO_ITEMS': 'Available values are: %s.',
@@ -119,9 +150,21 @@
             }
             return false;
         };
+        detect_mobile = function () {
+            return true;
+            return (navigator.userAgent.match(/Android/i)
+                    || navigator.userAgent.match(/webOS/i)
+                    || navigator.userAgent.match(/iPhone/i)
+                    || navigator.userAgent.match(/iPad/i)
+                    || navigator.userAgent.match(/iPod/i)
+                    || navigator.userAgent.match(/BlackBerry/i)
+                    || navigator.userAgent.match(/Windows Phone/i));
+        };
         handle_select_field = function ($field, field_data) {
             var $this,
                 val,
+                items_str,
+                $tooltip,
                 items = field_data.fixed ? [field_data.fixed] : field_data.items;
             if (items !== undefined && items.length > 0) {
                 $('option', $field).each(
@@ -133,6 +176,13 @@
                         }
                     }
                 );
+                items_str = iteration_str($.map(items, function(item) {
+                    return $('option[value=' + item + ']', $field).html();
+                }).sort());
+                $tooltip = tooltip_factory($field, msg_factory('INFO_ITEMS', items_str));
+                if ($tooltip !== undefined) {
+                    $tooltip.addClass('om-tooltip');
+                }
             }
         };
         handle_text_field = function ($field, field_data) {
