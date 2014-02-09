@@ -8,14 +8,14 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-offer-maker',
-    version='0.1',
+    version='1.0a',
     packages=['offermaker'],
     include_package_data=True,
-    license='BSD License',  # example license
-    description='A simple Django app to conduct dynamic multi variantable forms.',
+    license='LGPL',
+    description='Django application that allows creation, preview and usage of custom multivariant restrictions applied on the forms.',
     long_description=README,
-    url='http://www.example.com/',
-    author='Your Name',
+    url='http://offermaker.kjw.pt',
+    author='Kamil Kujawinski',
     author_email='kamil@kujawinski.net',
     tests_require=[
         'unittest2',
@@ -25,7 +25,7 @@ setup(
         'Environment :: Web Environment',
         'Framework :: Django',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License', # example license
+        'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.6',

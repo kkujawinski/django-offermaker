@@ -81,7 +81,6 @@
             };
         }
 
-
         msgs = options.msgs || {
             'NO_VARIANTS': 'No matching variants',
             'INFO_ITEMS': 'Available values are: %s.',
