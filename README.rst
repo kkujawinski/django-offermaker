@@ -14,15 +14,18 @@ Demo application
 
 Quick start
 -----------
+1. Install django-offermaker ::
 
-1. Site configuration in settings.py ::
+    pip install django-offermaker
+
+2. Site configuration in settings.py ::
 
       INSTALLED_APPS = (
           ...
           'offermaker',
       )
 
-2. Create Django form::
+3. Create Django form::
 
     from django import forms
 
@@ -39,7 +42,7 @@ Quick start
         interest_rate = forms.FloatField(label=u'Interest rate', min_value=1, max_value=5)
         contribution = forms.FloatField(label=u'Contribution', min_value=0)
 
-3. Define your offer (in case you do not store it in database)::
+4. Define your offer (in case you do not store it in database)::
 
     offer = {
         'variants': [
@@ -129,7 +132,7 @@ b) Use proper template tag in template to print table::
 
 7. Offer editor:
 
-a) Use OfferJSONField field in your model. Remember to pass your django form created in 2.::
+a) Use OfferJSONField field in your model. Remember to pass your django form created in 3.::
 
     import offermaker
 
