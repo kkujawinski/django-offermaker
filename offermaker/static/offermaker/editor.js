@@ -589,7 +589,7 @@
             var $this = $(this),
                 field;
             if ($this.is(':checked')) {
-                field = $this.prop('data-field');
+                field = $this.attr('data-field');
                 selected_fields[field] = true;
             }
         });
@@ -658,11 +658,11 @@
 
         $add_group_link = $('<div class="group_addlink"><a href="#" class="addlink">Add group of variants</a></div>');
         $('a', $add_group_link).click(function () {
+            i += 1;
             $table_panel = table_factory(String(i), {});
             if ($table_panel !== undefined) {
                 $table_panel.insertBefore($('div:last', $editor_panel));
             }
-            i += 1;
             return false;
         });
         $editor_panel.append($add_group_link);

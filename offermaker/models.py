@@ -31,6 +31,11 @@ class OfferMakerWidget(forms.Widget):
         value = value if value else {}
         value = value if isinstance(value, basestring) else json.dumps(value)
         output = [forms.HiddenInput().render(name, value),
+                  u'<ul class="editor-instructions">',
+                  u'<li>Only already tagged values are saved. Use TAB or ENTER to convert.</li>',
+                  u'<li>Use ":" as range values link, ex. 1:2.</li>',
+                  u'<li>No value at the beginning or the end of the range means minus infinity or '
+                  u'plus infinity, ex. :2, 3:)</li></ul>',
                   u'<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '%s_fields' % name}),
                                               ''.join(fields)),
                   u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
