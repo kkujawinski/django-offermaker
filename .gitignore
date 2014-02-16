@@ -3,5 +3,6 @@
 .idea/
 *.pyc
 dist
-django_offer_maker.egg-info
 unittest*.egg
+django_offermaker.egg-info
+django_offer_maker.egg-info
