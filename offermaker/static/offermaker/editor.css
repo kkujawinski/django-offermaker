@@ -3,6 +3,7 @@
 }
 .offermaker_field {
     max-width: 20em;
+    clear: both;
 }
 .offermaker_field label {
     width: 9em;

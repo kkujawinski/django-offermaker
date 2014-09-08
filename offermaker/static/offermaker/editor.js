@@ -338,14 +338,15 @@
         };
     };
 
-    get_field_factory = function (fields_conf, offer_encoder) {
+    get_field_factory = function (fields_conf, offer_encoder, field) {
         return function (field_id, field_name, field_values, cell) {
             var field_conf = fields_conf[field_id],
                 $input,
                 $input_panel,
                 $input_container,
                 handler,
-                HANDLERS;
+                HANDLERS,
+                label;
 
             if (Object.prototype.toString.call(field_values) !== '[object Array]') {
                 field_values = field_values === undefined ? [] : [field_values];
@@ -358,7 +359,8 @@
                 $input_panel.append($input_container);
                 $input_container.append($input);
             } else {
-                $input_panel = $('<div class="offermaker_field field_' + field_id + '"><label for="field__' + field_name + '">' + field_id +
+                label = offermaker.labels[field][field_id];
+                $input_panel = $('<div class="offermaker_field field_' + field_id + '"><label for="field__' + field_name + '">' + label +
                          '</label></div>');
                 $input_panel.append($input);
             }
@@ -481,12 +483,13 @@
         };
     };
 
-    get_th_field = function (param, fields_conf) {
-        return $('<th class="field_' + param + '" data-field="' + param + '">' + param +
+    get_th_field = function (param, fields_conf, field) {
+        var label = offermaker.labels[field][param];
+        return $('<th class="field_' + param + '" data-field="' + param + '">' + label +
                 (fields_conf[param].infotip || '') + '</th>');
     };
 
-    get_table_factory = function (fields_conf, variant_factory, selector_panel_factory) {
+    get_table_factory = function (fields_conf, variant_factory, selector_panel_factory, field) {
         var param,
             total_fields = 0;
         for (param in fields_conf) {
@@ -511,7 +514,7 @@
 
             $header_row = $('<tr class="offermaker_header">');
             for (i = 0; i < params.length; i += 1) {
-                $header_row.append(get_th_field(params[i], fields_conf));
+                $header_row.append(get_th_field(params[i], fields_conf, field));
             }
             $header_row.append('<th/');
             $table.append($header_row);
@@ -734,12 +737,12 @@
         global_params = get_global_params(fields_conf, get_params_in_variants(offer));
         offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
 
-        field_factory = get_field_factory(fields_conf, offer_encoder);
+        field_factory = get_field_factory(fields_conf, offer_encoder, field);
         group_column_operation_factory = get_group_column_operation_factory(fields_conf, field_factory, $editor_panel);
         variant_factory = get_variant_factory(field_factory);
         selector_panel_factory = get_selector_panel_factory(fields_conf, field_factory,
                                                                 group_column_operation_factory, $editor_panel);
-        table_factory = get_table_factory(fields_conf, variant_factory, selector_panel_factory);
+        table_factory = get_table_factory(fields_conf, variant_factory, selector_panel_factory, field);
         tables_factory($editor_panel, table_factory, variant_factory, global_params, offer);
 
         $field_panel = $editor_panel.parents('.field-' + field);

@@ -30,6 +30,10 @@ class OfferMakerWidget(forms.Widget):
         fields = [render_widget_for_field(field_name, field) for field_name, field in form_fields.items()]
         value = value if value else {}
         value = value if isinstance(value, basestring) else json.dumps(value)
+
+        field_labels_json = ', '.join(
+          ['%s: "%s"' % (field_name, unicode(field.label)) for field_name, field in form_fields.items()])
+
         output = [forms.HiddenInput().render(name, value),
                   u'<ul class="editor-instructions">',
                   u'<li>Only already tagged values are saved. Use TAB or ENTER to convert.</li>',
@@ -41,8 +45,8 @@ class OfferMakerWidget(forms.Widget):
                   u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
                                                              'id': '%s_panel' % name})),
                   u'<script type="text/javascript">',
-                  'window.jQuery = window.jQuery || django.jQuery;',
-                  '</script>',
+                  u'window.jQuery = window.jQuery || django.jQuery;',
+                  u'</script>',
 
                   css_tag("offermaker/editor.css"),
                   css_tag("offermaker/jquery-ui.min.css"),
@@ -51,7 +55,12 @@ class OfferMakerWidget(forms.Widget):
                   js_tag("offermaker/jquery-ui.min.js"),
                   js_tag("offermaker/bootstrap-tokenfield.min.js"),
                   js_tag("offermaker/editor.js"),
-                  u'<script type="text/javascript">offermaker.editor("%s");</script>' % name,
+
+                  u'<script type="text/javascript">' +
+                  u'offermaker.labels = offermaker.labels || {}; ' +
+                  u'offermaker.labels.%s = { %s }; ' % (name, field_labels_json) +
+                  u'offermaker.editor("%s"); ' % name +
+                  u'</script>',
                   ]
         return mark_safe('\n'.join(output))
 
