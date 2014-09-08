@@ -222,3 +222,17 @@ b) and configure proper params to be used ajax requests::
 6. Add html attributes to generated preview table::
 
     {% offermaker_preview offer class='table table-bordered' %}
+
+
+Troubleshooting
+---------------
+
+1. I run Django 1.5 and I have jQuery older than 1.9.
+
+You need to add new jQuery library dependency in you django admin site::
+
+    class OfferAdmin(admin.ModelAdmin):
+        ...
+        class Media:
+            js = ('//code.jquery.com/jquery-1.11.0.min.js',)
+

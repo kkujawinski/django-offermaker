@@ -8,7 +8,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-offermaker',
-    version='0.9.1',
+    version='0.9.2',
     packages=['offermaker'],
     include_package_data=True,
     license='LGPL',

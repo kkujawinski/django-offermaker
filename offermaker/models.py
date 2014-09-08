@@ -40,7 +40,9 @@ class OfferMakerWidget(forms.Widget):
                                               ''.join(fields)),
                   u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
                                                              'id': '%s_panel' % name})),
-                  u'<script type="text/javascript"> window.jQuery = django.jQuery; </script>',
+                  u'<script type="text/javascript">',
+                  'window.jQuery = window.jQuery || django.jQuery;',
+                  '</script>',
 
                   css_tag("offermaker/editor.css"),
                   css_tag("offermaker/jquery-ui.min.css"),

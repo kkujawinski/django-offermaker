@@ -30,6 +30,11 @@
     window.offermaker = window.offermaker || {};
     if (window.offermaker.editor !== undefined) { return; }
 
+    var jQueryVersion = $.fn.jquery.split('.');
+    if (parseInt(jQueryVersion[0]) < 1 || parseInt(jQueryVersion[1]) < 9) {
+        alert('Required jQuery version is 1.9+. Check README file for instructions.')
+    }
+
     // TOOLS
 
     array_has = function (haystack, needle) {
