@@ -247,15 +247,15 @@
                             };
                 }());
             }
-            if ($field.attr('type').toLowerCase() === 'number') {
+            if (($field.attr('data-om-type') || $field.attr('type')).toLowerCase() === 'number') {
                 return (function () {
                     var min,
                         max,
                         output,
                         range_str;
 
-                    min = $field.attr('min');
-                    max = $field.attr('max');
+                    min = $field.attr('data-om-min') || $field.attr('min');
+                    max = $field.attr('data-om-max') || $field.attr('max');
                     output = {'type': 'RANGE',
                             'min': min === undefined ? -Infinity : Number(min),
                             'max': max === undefined ? Infinity : Number(max),

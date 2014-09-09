@@ -236,3 +236,19 @@ You need to add new jQuery library dependency in you django admin site::
         class Media:
             js = ('//code.jquery.com/jquery-1.11.0.min.js',)
 
+2. I run Django 1.5 and django-offermaker doesn't recognize field types properly. 
+
+Django 1.5 admin site is not using HTML5 input types (ex. number), you can give hint 
+to django-offermaker about field type with following code::
+
+    def __init__(self, *args, **kwargs):
+        super(MyForm, self).__init__(*args, **kwargs)
+        self.fields['interest_rate'].widget.attrs['data-om-type'] = 'number'
+        self.fields['interest_rate'].widget.attrs['data-om-min'] = 1
+        self.fields['interest_rate'].widget.attrs['data-om-max'] = 5
+        self.fields['contribution'].widget.attrs['data-om-type'] = 'number'
+        self.fields['contribution'].widget.attrs['data-om-min'] = 0
+
+
+
+
