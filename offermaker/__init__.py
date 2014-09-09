@@ -3,4 +3,4 @@ try:
 except ImportError:
     pass
 from views import OfferMakerDispatcher
-from core import OfferMakerCore
+from core import OfferMakerCore, NoMatchingVariantsException
