@@ -536,7 +536,7 @@
         };
     };
 
-    get_selector_panel_factory = function (fields_conf, field_factory, group_column_operation_factory, $editor_panel) {
+    get_selector_panel_factory = function (fields_conf, field_factory, group_column_operation_factory, $editor_panel, field) {
         return function (group, selected_params) {
             var checked,
                 $delete_group,
@@ -566,7 +566,7 @@
                                     field_id + '" data-field="' + param + '"/>');
                     $selector_field = $('<label for="id_' + field_id + '"/>');
                     $selector_field.append($input);
-                    $selector_field.append(String(param));
+                    $selector_field.append(offermaker.labels[field][param]);
                     handleCheckboxClick(param);
                     $panel.append($selector_field);
                 }
@@ -621,8 +621,8 @@
         $global_params_panel.find('.field_' + selected_field).remove();
     };
 
-    get_group_column_operation_factory = function (fields_conf, field_factory, $editor_panel) {
-        return function (operation, group, field) {
+    get_group_column_operation_factory = function (fields_conf, field_factory, $editor_panel, field) {
+        return function (operation, group, param) {
             var $table = $editor_panel.find('.group_' + group + ' table'),
                 trs,
                 last_index;
@@ -636,15 +636,15 @@
                         return undefined;
                     }
                     if (index === 0) {
-                        get_th_field(field, fields_conf).insertBefore($('th:last', $row));
+                        get_th_field(param, fields_conf, field).insertBefore($('th:last', $row));
                     } else {
-                        $cell = field_factory(field, group + '-' + String(index - 1) + '__' + field, undefined, true);
+                        $cell = field_factory(param, group + '-' + String(index - 1) + '__' + param, undefined, true);
                         $cell.insertBefore($('td:last', $row));
                     }
                 });
-                remove_selected_field(field, $editor_panel);
+                remove_selected_field(param, $editor_panel);
             } else if (operation === 'remove') {
-                $('td.field_' + field + ', th.field_' + field, $table).remove();
+                $('td.field_' + param + ', th.field_' + param, $table).remove();
                 revert_not_selected_fields(fields_conf, $editor_panel, field_factory);
             }
         };
@@ -738,10 +738,10 @@
         offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
 
         field_factory = get_field_factory(fields_conf, offer_encoder, field);
-        group_column_operation_factory = get_group_column_operation_factory(fields_conf, field_factory, $editor_panel);
+        group_column_operation_factory = get_group_column_operation_factory(fields_conf, field_factory, $editor_panel, field);
         variant_factory = get_variant_factory(field_factory);
         selector_panel_factory = get_selector_panel_factory(fields_conf, field_factory,
-                                                                group_column_operation_factory, $editor_panel);
+            group_column_operation_factory, $editor_panel, field);
         table_factory = get_table_factory(fields_conf, variant_factory, selector_panel_factory, field);
         tables_factory($editor_panel, table_factory, variant_factory, global_params, offer);
 
