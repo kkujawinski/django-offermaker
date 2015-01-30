@@ -13,16 +13,13 @@
         sum_range_tokens,
         format_range_tokens,
         get_fields_conf,
+        get_field_key,
+        get_fields_order,
         get_offer_encoder,
-        get_field_factory,
-        get_variant_factory,
         get_th_field,
-        get_table_factory,
-        get_selector_panel_factory,
         get_selected_fields,
         revert_not_selected_fields,
         remove_selected_field,
-        get_group_column_operation_factory,
         tables_factory,
         mark_incompatible_variants;
 
@@ -216,10 +213,14 @@
 
     // HTML MANAGEMENT
 
+    get_field_key = function(input, field_prefix) {
+        return $(input).attr('name').replace(field_prefix, '');
+    };
+
     get_fields_conf = function ($fields_div, field) {
         var array_keys_dict,
             get_field_conf,
-            field_prefix,
+            field_prefix = field + '__',
             output_params;
 
         array_keys_dict = function (values) {
@@ -279,15 +280,27 @@
             return {'type': 'ANYITEM', 'str2value': function (str) { return str.split(TOKENS_SEP); }};
         };
 
-        field_prefix = field + '__';
         output_params = {};
+
         $(':input', $fields_div[0]).each(
             function () {
-                var key = $(this).attr('name').replace(field_prefix, '');
+                var key = get_field_key(this, field_prefix)
                 output_params[key] = get_field_conf($(this));
             }
         );
         return output_params;
+    };
+
+    get_fields_order = function ($fields_div, field) {
+        var field_prefix = field + '__',
+            output = {}
+        $(':input', $fields_div[0]).each(
+            function (idx) {
+                var key = get_field_key(this, field_prefix)
+                output[key] = idx;
+            }
+        );
+        return output;
     };
 
     get_offer_encoder = function (offer, $offer_field, $editor_panel, fields_conf) {
@@ -338,8 +351,110 @@
         };
     };
 
-    get_field_factory = function (fields_conf, offer_encoder, field) {
-        return function (field_id, field_name, field_values, cell) {
+    get_th_field = function (param, fields_conf, field) {
+        var label = offermaker.labels[field][param];
+        return $('<th class="field_' + param + '" data-field="' + param + '">' + label +
+                (fields_conf[param].infotip || '') + '</th>');
+    };
+
+    get_selected_fields = function ($editor_panel) {
+        var selected_fields = {};
+        $editor_panel.find('.editor_selector_panel :input').each(function () {
+            var $this = $(this),
+                field;
+            if ($this.is(':checked')) {
+                field = $this.attr('data-field');
+                selected_fields[field] = true;
+            }
+        });
+        return selected_fields;
+    };
+
+    revert_not_selected_fields = function (fields_conf, $editor_panel, field_factory) {
+        var $global_params_panel = $('.variant__default', $editor_panel),
+            selected_fields = get_selected_fields($editor_panel);
+
+        $.each(get_global_params(fields_conf, selected_fields), function () {
+            var field = String(this);
+            if ($global_params_panel.find('.field_' + field).length === 0) {
+                $global_params_panel.append(field_factory(field, 'default__' + field));
+            }
+        });
+    };
+
+    remove_selected_field = function (selected_field, $editor_panel) {
+        var $global_params_panel = $('.variant__default', $editor_panel);
+        $global_params_panel.find('.field_' + selected_field).remove();
+    };
+
+    mark_incompatible_variants = function (conflicted_variants, $editor_panel) {
+        $.each(conflicted_variants, function () {
+            var $row,
+                groups_str,
+                $conflicted_variant,
+                conflicted_groups_classes,
+                $conflicted_groups;
+
+            $row = $('.variant__' + this['variant'], $editor_panel);
+            $conflicted_variant = $('<span href="#" class="validation_info variant_conflicted_info"/>');
+            groups_str = this['groups'].join(', ');
+            $conflicted_variant.prop('title', 'Variant conflicted with following groups of variants: ' + groups_str);
+            conflicted_groups_classes = $($.map(this['groups'], function (item) {
+                return '.group_' + item;
+            }));
+            $conflicted_groups = $($.makeArray(conflicted_groups_classes).join(', '), $editor_panel);
+            $row.addClass('offermaker_conflicted_variant');
+
+            $conflicted_variant.hover(
+                function () {
+                    $conflicted_groups.addClass('offermaker_conflicted_group');
+                }, function () {
+                    $conflicted_groups.removeClass('offermaker_conflicted_group');
+                });
+
+            $('.offermaker_variant :input[id^="field__"], a.deletelink', $editor_panel).one('click',
+                function () {
+                    $('.variant_conflicted_info', $editor_panel).remove();
+                    $('.offermaker_conflicted_variant', $editor_panel).removeClass('offermaker_conflicted_variant');
+                }
+            );
+
+            $('.offermaker_cell_operations', $row).append($conflicted_variant);
+        });
+
+    };
+
+    window.offermaker.editor = function (field) {
+        var $input,
+            $editor_panel,
+            offer,
+            fields_conf,
+            $field_panel,
+            global_params,
+            offer_encoder,
+            field_factory,
+            fields_order,
+            group_column_operation_factory,
+            variant_factory,
+            selector_panel_factory,
+            table_factory,
+            fields_panel = $('#' + field + '_fields'),
+            total_fields;
+
+
+        $input = $('input[name=' + field + ']');
+        $editor_panel = $('#' + field + '_panel');
+
+        offer = JSON.parse($input.val());
+        offer = $.isEmptyObject(offer) ? {variants: [], params: {}} : offer;
+        fields_conf = get_fields_conf(fields_panel, field);
+        fields_order = get_fields_order(fields_panel, field);
+        total_fields = $(':input', fields_panel).length
+        global_params = get_global_params(fields_conf, get_params_in_variants(offer));
+        offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
+
+
+        field_factory = function (field_id, field_name, field_values, cell) {
             var field_conf = fields_conf[field_id],
                 $input,
                 $input_panel,
@@ -450,10 +565,36 @@
             });
             return $input_panel;
         };
-    };
 
-    get_variant_factory = function (field_factory) {
-        return function (name, params, variant, row) {
+        group_column_operation_factory = function (operation, group, param) {
+            var $table = $editor_panel.find('.group_' + group + ' table'),
+                trs,
+                last_index;
+            if (operation === 'add') {
+                trs = $table.find('tr');
+                last_index = trs.length - 1;
+                trs.each(function (index) {
+                    var $cell,
+                        $row = $(this);
+                    if (index === last_index) {
+                        return undefined;
+                    }
+
+                    if (index === 0) {
+                        get_th_field(param, fields_conf, field).insertBefore($('th:last', $row));
+                    } else {
+                        $cell = field_factory(param, group + '-' + String(index - 1) + '__' + param, undefined, true);
+                        $cell.insertBefore($('td:last', $row));
+                    }
+                });
+                remove_selected_field(param, $editor_panel);
+            } else if (operation === 'remove') {
+                $('td.field_' + param + ', th.field_' + param, $table).remove();
+                revert_not_selected_fields(fields_conf, $editor_panel, field_factory);
+            }
+        };
+
+        variant_factory = function (name, params, variant, row) {
             var i,
                 $panel,
                 param,
@@ -481,63 +622,8 @@
             }
             return $panel;
         };
-    };
 
-    get_th_field = function (param, fields_conf, field) {
-        var label = offermaker.labels[field][param];
-        return $('<th class="field_' + param + '" data-field="' + param + '">' + label +
-                (fields_conf[param].infotip || '') + '</th>');
-    };
-
-    get_table_factory = function (fields_conf, variant_factory, selector_panel_factory, field) {
-        var param,
-            total_fields = 0;
-        for (param in fields_conf) {
-            if (fields_conf.hasOwnProperty(param)) { total_fields += 1; }
-        }
-        return function (group, variants) {
-            var i,
-                $add_row,
-                $editor_panel,
-                $header_row,
-                params,
-                $panel,
-                $table;
-
-            if (variants.length === 0) { return; }
-            params = get_params_for_group(variants);
-
-            $panel = $('<div class="group_' + group + '" class="offermaker_group_panel">');
-            $panel.append(selector_panel_factory(group, params));
-            $table = $('<table class="offermaker_table"/>');
-            $panel.append($table);
-
-            $header_row = $('<tr class="offermaker_header">');
-            for (i = 0; i < params.length; i += 1) {
-                $header_row.append(get_th_field(params[i], fields_conf, field));
-            }
-            $header_row.append('<th/');
-            $table.append($header_row);
-
-            for (i = 0; i < variants.length; i += 1) {
-                $table.append(variant_factory(group + '-' + (i + 1) , params, variants[i], true));
-            }
-
-            $add_row = $('<tr class="offermaker_summary"><td colspan="' + String(total_fields + 1) + '"><a href="#" class="addlink">Add variant</a></td></tr>');
-            $editor_panel = $('.editor_selector_panel', $table.parent());
-            $table.append($add_row);
-            $('a', $add_row).click(function () {
-                var new_params = $('th', $table).map(function (index, item) { return $(item).attr('data-field'); });
-                variant_factory(group + '-' + i, new_params, {}, true).insertBefore($('tr:last', $table));
-                i += 1;
-                return false;
-            });
-            return $panel;
-        };
-    };
-
-    get_selector_panel_factory = function (fields_conf, field_factory, group_column_operation_factory, $editor_panel, field) {
-        return function (group, selected_params) {
+        selector_panel_factory = function (group, selected_params) {
             var checked,
                 $delete_group,
                 field_id,
@@ -589,161 +675,71 @@
             $panel.append($delete_group);
             return $panel;
         };
-    };
 
-    get_selected_fields = function ($editor_panel) {
-        var selected_fields = {};
-        $editor_panel.find('.editor_selector_panel :input').each(function () {
-            var $this = $(this),
-                field;
-            if ($this.is(':checked')) {
-                field = $this.attr('data-field');
-                selected_fields[field] = true;
+        table_factory = function (group, variants) {
+            var i,
+                $add_row,
+                $editor_panel,
+                $header_row,
+                params,
+                $panel,
+                $table;
+
+            if (variants.length === 0) { return; }
+            params = get_params_for_group(variants);
+
+            $panel = $('<div class="group_' + group + '" class="offermaker_group_panel">');
+            $panel.append(selector_panel_factory(group, params));
+            $table = $('<table class="offermaker_table"/>');
+            $panel.append($table);
+
+            $header_row = $('<tr class="offermaker_header">');
+            for (i = 0; i < params.length; i += 1) {
+                $header_row.append(get_th_field(params[i], fields_conf, field));
             }
-        });
-        return selected_fields;
-    };
+            $header_row.append('<th/>');
+            $table.append($header_row);
 
-    revert_not_selected_fields = function (fields_conf, $editor_panel, field_factory) {
-        var $global_params_panel = $('.variant__default', $editor_panel),
-            selected_fields = get_selected_fields($editor_panel);
-
-        $.each(get_global_params(fields_conf, selected_fields), function () {
-            var field = String(this);
-            if ($global_params_panel.find('.field_' + field).length === 0) {
-                $global_params_panel.append(field_factory(field, 'default__' + field));
+            for (i = 0; i < variants.length; i += 1) {
+                $table.append(variant_factory(group + '-' + (i + 1) , params, variants[i], true));
             }
-        });
-    };
 
-    remove_selected_field = function (selected_field, $editor_panel) {
-        var $global_params_panel = $('.variant__default', $editor_panel);
-        $global_params_panel.find('.field_' + selected_field).remove();
-    };
-
-    get_group_column_operation_factory = function (fields_conf, field_factory, $editor_panel, field) {
-        return function (operation, group, param) {
-            var $table = $editor_panel.find('.group_' + group + ' table'),
-                trs,
-                last_index;
-            if (operation === 'add') {
-                trs = $table.find('tr');
-                last_index = trs.length - 1;
-                trs.each(function (index) {
-                    var $cell,
-                        $row = $(this);
-                    if (index === last_index) {
-                        return undefined;
-                    }
-                    if (index === 0) {
-                        get_th_field(param, fields_conf, field).insertBefore($('th:last', $row));
-                    } else {
-                        $cell = field_factory(param, group + '-' + String(index - 1) + '__' + param, undefined, true);
-                        $cell.insertBefore($('td:last', $row));
-                    }
-                });
-                remove_selected_field(param, $editor_panel);
-            } else if (operation === 'remove') {
-                $('td.field_' + param + ', th.field_' + param, $table).remove();
-                revert_not_selected_fields(fields_conf, $editor_panel, field_factory);
-            }
+            $add_row = $('<tr class="offermaker_summary"><td colspan="' + String(total_fields + 1) + '"><a href="#" class="addlink">Add variant</a></td></tr>');
+            $editor_panel = $('.editor_selector_panel', $table.parent());
+            $table.append($add_row);
+            $('a', $add_row).click(function () {
+                var new_params = $('th', $table).map(function (index, item) { return $(item).attr('data-field'); });
+                variant_factory(group + '-' + i, new_params, {}, true).insertBefore($('tr:last', $table));
+                i += 1;
+                return false;
+            });
+            return $panel;
         };
-    };
 
-    tables_factory = function ($editor_panel, table_factory, variant_factory,
-                               global_params, offer) {
-        var i,
-            $add_group_link,
-            $table_panel;
+        (function () {
+            var i,
+                $add_group_link,
+                $table_panel;
 
-        $editor_panel.append(variant_factory('default', global_params, offer));
-        for (i = 0; i < offer.variants.length; i += 1) {
-            $table_panel = table_factory(String(i + 1), offer.variants[i]);
-            if ($table_panel !== undefined) {
-                $editor_panel.append($table_panel);
-            }
-        }
-
-        $add_group_link = $('<div class="group_addlink"><a href="#" class="addlink">Add group of variants</a></div>');
-        $('a', $add_group_link).click(function () {
-            i += 1;
-            $table_panel = table_factory(String(i), {});
-            if ($table_panel !== undefined) {
-                $table_panel.insertBefore($('div:last', $editor_panel));
-            }
-            return false;
-        });
-        $editor_panel.append($add_group_link);
-    };
-
-    mark_incompatible_variants = function (conflicted_variants, $editor_panel) {
-        $.each(conflicted_variants, function () {
-            var $row,
-                groups_str,
-                $conflicted_variant,
-                conflicted_groups_classes,
-                $conflicted_groups;
-
-            $row = $('.variant__' + this['variant'], $editor_panel);
-            $conflicted_variant = $('<span href="#" class="validation_info variant_conflicted_info"/>');
-            groups_str = this['groups'].join(', ');
-            $conflicted_variant.prop('title', 'Variant conflicted with following groups of variants: ' + groups_str);
-            conflicted_groups_classes = $($.map(this['groups'], function (item) {
-                return '.group_' + item;
-            }));
-            $conflicted_groups = $($.makeArray(conflicted_groups_classes).join(', '), $editor_panel);
-            $row.addClass('offermaker_conflicted_variant');
-
-            $conflicted_variant.hover(
-                function () {
-                    $conflicted_groups.addClass('offermaker_conflicted_group');
-                }, function () {
-                    $conflicted_groups.removeClass('offermaker_conflicted_group');
-                });
-
-            $('.offermaker_variant :input[id^="field__"], a.deletelink', $editor_panel).one('click',
-                function () {
-                    $('.variant_conflicted_info', $editor_panel).remove();
-                    $('.offermaker_conflicted_variant', $editor_panel).removeClass('offermaker_conflicted_variant');
+            $editor_panel.append(variant_factory('default', global_params, offer));
+            for (i = 0; i < offer.variants.length; i += 1) {
+                $table_panel = table_factory(String(i + 1), offer.variants[i]);
+                if ($table_panel !== undefined) {
+                    $editor_panel.append($table_panel);
                 }
-            );
+            }
 
-            $('.offermaker_cell_operations', $row).append($conflicted_variant);
-        });
-
-    };
-
-    window.offermaker.editor = function (field) {
-        var $input,
-            $editor_panel,
-            offer,
-            fields_conf,
-            $field_panel,
-            global_params,
-            offer_encoder,
-            field_factory,
-            group_column_operation_factory,
-            variant_factory,
-            selector_panel_factory,
-            table_factory;
-
-
-        $input = $('input[name=' + field + ']');
-        $editor_panel = $('#' + field + '_panel');
-
-        offer = JSON.parse($input.val());
-        offer = $.isEmptyObject(offer) ? {variants: [], params: {}} : offer;
-        fields_conf = get_fields_conf($('#' + field + '_fields'), field);
-        global_params = get_global_params(fields_conf, get_params_in_variants(offer));
-        offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
-
-        field_factory = get_field_factory(fields_conf, offer_encoder, field);
-        group_column_operation_factory = get_group_column_operation_factory(fields_conf, field_factory, $editor_panel, field);
-        variant_factory = get_variant_factory(field_factory);
-        selector_panel_factory = get_selector_panel_factory(fields_conf, field_factory,
-            group_column_operation_factory, $editor_panel, field);
-        table_factory = get_table_factory(fields_conf, variant_factory, selector_panel_factory, field);
-        tables_factory($editor_panel, table_factory, variant_factory, global_params, offer);
+            $add_group_link = $('<div class="group_addlink"><a href="#" class="addlink">Add group of variants</a></div>');
+            $('a', $add_group_link).click(function () {
+                i += 1;
+                $table_panel = table_factory(String(i), {});
+                if ($table_panel !== undefined) {
+                    $table_panel.insertBefore($('div:last', $editor_panel));
+                }
+                return false;
+            });
+            $editor_panel.append($add_group_link);
+        })();
 
         $field_panel = $editor_panel.parents('.field-' + field);
         if ($field_panel.hasClass('errors')) {
