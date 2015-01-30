@@ -2,6 +2,15 @@
 Offer Maker
 ===========
 
+Changelog
+---------
+
+0.9.4
+
+1. Django 1.7 support. 
+2. Python 3 support
+
+
 Demo application
 ----------------
 
