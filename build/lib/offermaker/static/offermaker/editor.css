@@ -1,0 +1,99 @@
+.offermaker_panel {
+    margin-left: 10em;
+}
+.offermaker_field {
+    max-width: 20em;
+    clear: both;
+}
+.offermaker_field label {
+    width: 9em;
+}
+.offermaker_field .form-control {
+    border: 1px solid #ccc;
+    margin-left: 11em;
+    margin-bottom: 0.3em;
+    display: block;
+    width: 100%;
+    padding: 5px 4px 0 4px;
+    font-size: 11px;
+    line-height: 1.028571429;
+    color: #555;
+    vertical-align: middle;
+    min-height: 0;
+}
+.offermaker_field p.offermaker_field_info {
+    font-size: 0.8em;
+    width: 100px;
+    margin-top: -14px;
+    color: gray;
+    margin-left: 0;
+    padding-left: 0;
+}
+.offermaker_field .tokenfield .token {
+    height: 16px;
+    padding-top: 2px;
+}
+.offermaker_field .tokenfield .token .close {
+    line-height: 1em;
+}
+.offermaker_field .tokenfield .token-input {
+    height: 12px;
+}
+table.offermaker_table {
+    margin-top: 5px;
+    clear: both;
+}
+.editor_selector_panel label {
+    width: auto;
+}
+.editor_selector_panel {
+    margin-top: 20px;
+    padding-bottom: 5px;
+}
+table.offermaker_table td, table.offermaker_table th {
+    border: 1px solid #eee;
+}
+table.offermaker_table th {
+    color: #666;
+    font-weight: normal;
+}
+table.offermaker_table p.offermaker_field_info {
+    font-size: 0.7em;
+}
+td.offermaker_cell {
+    padding: 0 5px;
+    max-width: 16em;
+}
+td.offermaker_cell .form-control {
+    margin-left: 1px;
+    border: none;
+}
+div.offermaker_field_container {
+    margin: 3px 7px 3px -3px;
+}
+.group_addlink {
+    margin: 20px 7px;
+}
+.group_deletelink {
+    clear: both;
+    padding-top: 5px;
+}
+.validation_info {
+    padding-left: 16px;
+    padding-bottom: 16px;
+    background: url(images/icon_error.gif) no-repeat;
+}
+.offermaker_conflicted_variant {
+    background: #F1BDBD;
+}
+.offermaker_conflicted_group table {
+    background: #F8E1E1;
+}
+ul.editor-instructions {
+    padding: 10px 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    -webkit-box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+}

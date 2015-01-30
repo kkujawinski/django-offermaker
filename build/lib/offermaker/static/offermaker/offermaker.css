@@ -1,0 +1,14 @@
+select option[value=''] {
+    color: #CCC;
+}
+
+option.om-not-available {
+    color: #999;
+    background-color: #EEE;
+}
+
+p.infotip {
+    margin: 0;
+    font-size: 0.8em;
+    color: gray;
+}

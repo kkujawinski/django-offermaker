@@ -17,13 +17,14 @@ setup(
     url='http://offermaker.kjw.pt',
     author='Kamil Kujawinski',
     author_email='kamil@kujawinski.net',
-    setup_requires=[
+    install_requires=[
         'jsonfield>=1.0.0',
     ],
     tests_require=[
         'unittest2',
     ],
     test_suite="tests",
+    zip_safe=False,
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',
