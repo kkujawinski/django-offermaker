@@ -303,54 +303,6 @@
         return output;
     };
 
-    get_offer_encoder = function (offer, $offer_field, $editor_panel, fields_conf) {
-        return function () {
-            // modyfikacja offer
-            var field_name,
-                field_value,
-                new_global_params = {},
-                new_variants;
-            $('.variant__default :input[name^="default__"]', $editor_panel).each(function () {
-                var $this = $(this);
-                field_value = $this.val();
-                if (field_value !== undefined && field_value !== '') {
-                    field_name = $this.attr('data-field');
-                    new_global_params[field_name] = fields_conf[field_name].str2value(field_value);
-                }
-            });
-            new_variants = [];
-            /*jslint unparam: true*/
-            $('.offermaker_table').each(function (group_index, group_item) {
-                var new_group = [];
-                $('.offermaker_variant', $(group_item)).each(function (variant_index, variant_item) {
-                    var new_params = {};
-                    $('.offermaker_cell', $(variant_item)).each(function (cell_index, cell_item) {
-                        var $the_field,
-                            the_field_name,
-                            the_field_value;
-
-                        $the_field = $(':input[id^="field__"]', $(cell_item));
-                        the_field_name = $the_field.attr('data-field');
-                        the_field_value = $the_field.val().trim();
-                        if (the_field_value !== '') {
-                            new_params[the_field_name] = fields_conf[the_field_name].str2value(the_field_value);
-                        }
-                    });
-                    if (!$.isEmptyObject(new_params)) {
-                        new_group.push({params: new_params});
-                    }
-                });
-                if (new_group.length > 0) {
-                    new_variants.push(new_group);
-                }
-            });
-            /*jslint unparam: false*/
-            offer.params = new_global_params;
-            offer.variants = new_variants;
-            $offer_field.val(JSON.stringify(offer));
-        };
-    };
-
     get_th_field = function (param, fields_conf, field) {
         var label = offermaker.labels[field][param];
         return $('<th class="field_' + param + '" data-field="' + param + '">' + label +
@@ -451,8 +403,52 @@
         fields_order = get_fields_order(fields_panel, field);
         total_fields = $(':input', fields_panel).length
         global_params = get_global_params(fields_conf, get_params_in_variants(offer));
-        offer_encoder = get_offer_encoder(offer, $input, $editor_panel, fields_conf);
 
+        offer_encoder = function () {
+            // modyfikacja offer
+            var field_name,
+                field_value,
+                new_global_params = {},
+                new_variants;
+            $('.variant__default :input[name^="default__"]', $editor_panel).each(function () {
+                var $this = $(this);
+                field_value = $this.val();
+                if (field_value !== undefined && field_value !== '') {
+                    field_name = $this.attr('data-field');
+                    new_global_params[field_name] = fields_conf[field_name].str2value(field_value);
+                }
+            });
+            new_variants = [];
+            /*jslint unparam: true*/
+            $('.offermaker_table').each(function (group_index, group_item) {
+                var new_group = [];
+                $('.offermaker_variant', $(group_item)).each(function (variant_index, variant_item) {
+                    var new_params = {};
+                    $('.offermaker_cell', $(variant_item)).each(function (cell_index, cell_item) {
+                        var $the_field,
+                            the_field_name,
+                            the_field_value;
+
+                        $the_field = $(':input[id^="field__"]', $(cell_item));
+                        the_field_name = $the_field.attr('data-field');
+                        the_field_value = $the_field.val().trim();
+                        if (the_field_value !== '') {
+                            new_params[the_field_name] = fields_conf[the_field_name].str2value(the_field_value);
+                        }
+                    });
+                    if (!$.isEmptyObject(new_params)) {
+                        new_group.push({params: new_params});
+                    }
+                });
+                if (new_group.length > 0) {
+                    new_variants.push(new_group);
+                }
+            });
+            /*jslint unparam: false*/
+            offer.params = new_global_params;
+            offer.variants = new_variants;
+            $input.val(JSON.stringify(offer));
+        };
 
         field_factory = function (field_id, field_name, field_values, cell) {
             var field_conf = fields_conf[field_id],
