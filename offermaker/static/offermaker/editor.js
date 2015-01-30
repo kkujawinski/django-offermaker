@@ -598,6 +598,7 @@
             } else if (operation === 'remove') {
                 $('td.field_' + param + ', th.field_' + param, $table).remove();
                 revert_not_selected_fields(fields_conf, $editor_panel, field_factory);
+                offer_encoder();
             }
         };
 
@@ -617,7 +618,13 @@
                     $row.append(field_factory(param, name + '__' + param, value, true));
                 }
                 $td_delete = $('<td class="offermaker_cell_operations"><a href="#" class="deletelink"/></td>');
-                $('a', $td_delete).click(function () { $row.remove(); return false; });
+                $('a', $td_delete).click(
+                    function () {
+                        $row.remove();
+                        offer_encoder();
+                        return false;
+                    }
+                );
                 $row.append($td_delete);
                 return $row;
             }
@@ -678,6 +685,7 @@
                         $global_params_panel.append(field_factory(field, 'default__' + field));
                     }
                 });
+                offer_encoder();
             });
             $panel.append($delete_group);
             return $panel;
