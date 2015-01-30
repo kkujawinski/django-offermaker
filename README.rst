@@ -5,10 +5,14 @@ Offer Maker
 Changelog
 ---------
 
-0.9.4
+- 0.9.5
 
-1. Django 1.7 support. 
-2. Python 3 support
+    1. Small bug fixes
+
+- 0.9.4
+
+    1. Django 1.7 support
+    2. Python 3 support
 
 
 Demo application
@@ -18,7 +22,7 @@ Demo application
 
 2. Or checkout and install locally::
 
-    git clone git@bitbucket.org:kkujawinski/offer-maker-demo-site.git
+    git clone git@github.com:kkujawinski/django-offermaker-demo.git
 
 
 Quick start
