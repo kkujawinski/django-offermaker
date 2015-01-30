@@ -105,7 +105,10 @@ class OfferJSONField(JSONField):
         }
         defaults.update(kwargs)
         defaults['widget'] = OfferMakerWidget()
-        return super(OfferJSONField, self).formfield(**defaults)
+        field = super(OfferJSONField, self).formfield(**defaults)
+        if field.help_text == "Enter valid JSON":
+            field.help_text = None
+        return field
 
     def validate(self, value, model_instance):
         offer = OfferMakerCore(self.form_object, value)
