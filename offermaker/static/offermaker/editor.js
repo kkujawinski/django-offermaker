@@ -488,7 +488,8 @@
                                 response(filtered);
                             }
                         },
-                        showAutocompleteOnFocus: true
+                        showAutocompleteOnFocus: true,
+                        createTokensOnBlur: true
                     });
                     $input.change(function () {
                         var filtered = $input.val().split(TOKENS_SEP).filter(function (item) {
@@ -505,7 +506,9 @@
                     return $input;
                 },
                 'ANYITEM': function () {
-                    $input.tokenfield();
+                    $input.tokenfield({
+                        createTokensOnBlur: true
+                    });
                     $input.tokenfield('setTokens', field_values);
                     return $input;
                 },
@@ -518,7 +521,9 @@
                     if (!cell && field_conf.infotip) {
                         $input_panel.append(field_conf.infotip);
                     }
-                    $input.tokenfield();
+                    $input.tokenfield({
+                        createTokensOnBlur: true
+                    });
 
                     $input.change(function (event) {
                         var old_val,
