@@ -47,7 +47,7 @@ class OfferMakerCoreRestrictionSet(TestCase):
         )
 
     def test_split_to_variants(self):
-        my_sorted = partial(sorted, cmp=RestrictionSet.fields_cmp(['crediting_period', 'product']))
+        my_sorted = partial(sorted, key=RestrictionSet.fields_sorted_key(['crediting_period', 'product']))
         self.assertEqual(
             my_sorted(RestrictionSet({
                 'product': Restriction('product', ['PROD1']),

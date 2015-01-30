@@ -1,12 +1,20 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import json
-from django.db import models
+
 from django import forms
 from django.forms.util import flatatt
+from django.utils import six
 from django.utils.html import mark_safe
+from django.utils.encoding import force_text
 from django.templatetags.static import static
 from django.core.exceptions import ValidationError
-import offermaker
 
+from jsonfield import JSONField
+from jsonfield.fields import JSONFormField
+
+from .core import OfferMakerCore
 
 select_widget = forms.Select()
 
@@ -15,10 +23,12 @@ class OfferMakerWidget(forms.Widget):
     def render(self, name, value, attrs=None):
         def render_widget_for_field(field_name, field):
             if hasattr(field, 'choices'):
-                return select_widget.render('%s__%s' % (name, field_name), '',
-                                     choices=field.choices)
+                return select_widget.render(
+                    '%s__%s' % (name, field_name), '',
+                    choices=field.choices
+                )
             else:
-                return field.widget.render('%s__%s' %(name, field_name), '')
+                return field.widget.render('%s__%s' % (name, field_name), '')
 
         def js_tag(path):
             return u'<script src="%s" type="text/javascript"></script>' % static(path)
@@ -29,10 +39,12 @@ class OfferMakerWidget(forms.Widget):
         form_fields = self.attrs['form_object'].fields
         fields = [render_widget_for_field(field_name, field) for field_name, field in form_fields.items()]
         value = value if value else {}
-        value = value if isinstance(value, basestring) else json.dumps(value)
+        value = value if isinstance(value, six.string_types) else json.dumps(value)
 
-        field_labels_json = ', '.join(
-          ['%s: "%s"' % (field_name, unicode(field.label)) for field_name, field in form_fields.items()])
+        field_labels_json = ', '.join([
+            '%s: "%s"' % (field_name, force_text(field.label))
+            for field_name, field in form_fields.items()
+        ])
 
         output = [forms.HiddenInput().render(name, value),
                   u'<ul class="editor-instructions">',
@@ -65,9 +77,7 @@ class OfferMakerWidget(forms.Widget):
         return mark_safe('\n'.join(output))
 
 
-class OfferMakerField(forms.Field):
-    widget = OfferMakerWidget()
-
+class OfferMakerField(JSONFormField):
     def __init__(self, form_object, *args, **kwargs):
         self.form_object = form_object
         super(OfferMakerField, self).__init__(*args, **kwargs)
@@ -78,36 +88,30 @@ class OfferMakerField(forms.Field):
         return output
 
 
-class OfferJSONField(models.Field):
-    __metaclass__ = models.SubfieldBase
-
-    def __init__(self, form_object):
-        self.form_object = form_object
-        super(OfferJSONField, self).__init__()
-
-    def get_internal_type(self):
-        return "TextField"
-
-    def get_prep_value(self, value):
-        return json.dumps(offermaker.OfferMakerCore.parse_offer_dict(value))
-
-    def to_python(self, value):
-        if not isinstance(value, (unicode, basestring)):
-            return value
-        return json.loads(value) if value else {}
-
-    def value_to_string(self, obj):
-        return json.dumps(self._get_val_from_obj(obj))
+class OfferJSONField(JSONField):
+    def __init__(self, form_object=None, *args, **kwargs):
+        if form_object is not None:
+            self.form_object = form_object
+        try:
+            self.form_object
+        except AttributeError:
+            raise NotImplemented('Form object is not defined for the field.')
+        super(OfferJSONField, self).__init__(*args, **kwargs)
 
     def formfield(self, **kwargs):
-        defaults = {'form_class': OfferMakerField,
-                    'form_object': self.form_object}
+        defaults = {
+            'form_class': OfferMakerField,
+            'form_object': self.form_object,
+        }
         defaults.update(kwargs)
+        defaults['widget'] = OfferMakerWidget()
         return super(OfferJSONField, self).formfield(**defaults)
 
     def validate(self, value, model_instance):
-        offer = offermaker.OfferMakerCore(self.form_object, value)
+        offer = OfferMakerCore(self.form_object, value)
         json_variants = [{'variant': key, 'groups': val} for key, val in offer.get_conflicts().items()]
         if json_variants:
-            raise ValidationError("Some variants are not compatible with group of variants.|CONFLICTED-VARIANT|%s" %
-                                  json.dumps(json_variants))
+            raise ValidationError(
+                "Some variants are not compatible with group of variants.|CONFLICTED-VARIANT|%s" %
+                json.dumps(json_variants)
+            )

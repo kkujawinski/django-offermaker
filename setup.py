@@ -17,6 +17,9 @@ setup(
     url='http://offermaker.kjw.pt',
     author='Kamil Kujawinski',
     author_email='kamil@kujawinski.net',
+    setup_requires=[
+        'jsonfield>=1.0.0',
+    ],
     tests_require=[
         'unittest2',
     ],

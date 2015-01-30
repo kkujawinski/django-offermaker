@@ -1,6 +1,6 @@
-try:
-    from models import OfferJSONField
-except ImportError:
-    pass
-from views import OfferMakerDispatcher
-from core import OfferMakerCore, NoMatchingVariantsException
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+from .models import OfferJSONField
+from .views import OfferMakerDispatcher
+from .core import OfferMakerCore, NoMatchingVariantsException

@@ -1,6 +1,10 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 from copy import deepcopy, copy
-from __builtin__ import enumerate
+from functools import reduce
+
+from django.utils import six
 from django.core.exceptions import ValidationError
 
 __author__ = 'kamil'
@@ -39,7 +43,7 @@ class Range(tuple):
                 # Empty range restriction, ex. sum of half limited restrictions
                 pass
             elif not any(restriction_is_none):
-                if not all(isinstance(x, (int, float, long)) for x in restriction):
+                if not all(isinstance(x, six.integer_types + (float,)) for x in restriction):
                     raise RangeException(u"Both side of range restriction must be numeric, "
                                          u"but %s isn't" % str(restriction))
                 if restriction[0] > restriction[1]:
@@ -47,20 +51,12 @@ class Range(tuple):
                                          u"but %s isn't" % str(restriction))
 
     @staticmethod
-    def range_cmp(a, b):
-        first_cmp = cmp(a[0], b[0])
-        if first_cmp == 0:
-            return cmp(a[1], b[1])
-        else:
-            return first_cmp
-
-    @staticmethod
     def sets_sum(sets):
         if not sets:
             yield sets
             return
 
-        sets = sorted(sets, cmp=Range.range_cmp)
+        sets = sorted(sets)
         saved = list(sets[0])
         for st, en in sets[1:]:
             if st <= saved[1]:
@@ -77,10 +73,10 @@ class Range(tuple):
             yield sets_x
             return
 
-        sets_x = sorted(sets_x, cmp=Range.range_cmp)
-        sets_y = sorted(sets_y, cmp=Range.range_cmp)
+        sets_x = sorted(sets_x)
+        sets_y = sorted(sets_y)
         sets_y_iter = iter(x for x in sets_y if Range.is_range(x))
-        y_st, y_en = y_range = sets_y_iter.next()
+        y_st, y_en = y_range = next(sets_y_iter)
 
         for x_range in sets_x:
             x_st, x_en = x_range
@@ -89,14 +85,14 @@ class Range(tuple):
                     yield Range(x_st, x_en)
                 else:
                     while y_st == y_en or (y_en <= x_st and not Range.is_range(x_range * y_range)):
-                        y_st, y_en = y_range = sets_y_iter.next()
+                        y_st, y_en = y_range = next(sets_y_iter)
 
                     while y_st <= x_en:
                         if x_st < y_st:
                             yield (x_st, min(x_en, y_st))
                         if y_en <= x_en:
                             x_st = y_en
-                        y_st, y_en = y_range = sets_y_iter.next()
+                        y_st, y_en = y_range = next(sets_y_iter)
                     else:
                         yield x_range
             except StopIteration:
@@ -109,7 +105,7 @@ class Range(tuple):
             return False
         if len(x) != 2:
             return False
-        if not all(y is None or isinstance(y, (int, float, long)) for y in x):
+        if not all(y is None or isinstance(y, six.integer_types + (float,)) for y in x):
             return False
         return x is not None and x[0] != x[1]
 
@@ -255,14 +251,11 @@ class RestrictionSet(dict):
             yield v
 
     @staticmethod
-    def fields_cmp(fields):
-        def variants_cmp(x, y):
-            for f in fields:
-                out = cmp(x.get(f), y.get(f))
-                if out != 0:
-                    return out
-            return 0
-        return variants_cmp
+    def fields_sorted_key(fields):
+        # return lambda item: tuple(item.get(f) for f in fields)
+        def _func(item):
+            return tuple(item.get(f) for f in fields)
+        return _func
 
 
 class Restriction(object):
@@ -288,19 +281,22 @@ class Restriction(object):
                 if not Restriction.has_restriction_the_same_types(restriction):
                     raise Exception(u"All items in restriction must have same type, but %s isn't" % str(restriction))
                 if len(restriction) == 1:
-                    self.fixed = iter(restriction).next()
+                    self.fixed = next(iter(restriction))
                 else:
                     self.items = frozenset(restriction)
         else:
             self.fixed = restriction
         if self.ranges and len(self.ranges) == 1:
-            x, y = iter(self.ranges).next()
+            x, y = next(iter(self.ranges))
             if x == y:
                 self.fixed = x
 
     @staticmethod
     def has_restriction_the_same_types(restriction):
-        types = frozenset((basestring if isinstance(r, basestring) else type(r) for r in restriction))
+        types = frozenset((
+            'string' if isinstance(r, six.string_types) else type(r)
+            for r in restriction
+        ))
         return len(types) <= 1
 
     def match(self, value):
@@ -383,7 +379,7 @@ class Restriction(object):
         other_items = frozenset([other.fixed]) if other.fixed else other.items
         output_other = self_items.intersection(other_items)
         if len(output_other) == 1:
-            return Restriction(self.field, iter(output_other).next())
+            return Restriction(self.field, next(iter(output_other)))
         elif len(output_other) > 1:
             return Restriction(self.field, output_other)
         else:
@@ -432,14 +428,25 @@ class Restriction(object):
     def __str__(self):
         return self.format_str()
 
+    def __lt__(self, other):
+        return self.__cmp__(other) == -1
+
     def __cmp__(self, other):
         if other is None:
             return -1
         if self.items or self.fixed:
-            return cmp(sorted(self.items or [self.fixed]),
-                       sorted(other.items or [other.fixed]))
+            x = sorted(self.items or [self.fixed])
+            y = sorted(other.items or [other.fixed])
         else:  # range
-            return cmp(sorted(self.ranges or []), sorted(other.ranges or []))
+            x = sorted(self.ranges or [])
+            y = sorted(other.ranges or [])
+
+        if x < y:
+            return -1
+        elif x > y:
+            return 1
+        else:
+            return 0
 
 
 class OfferMakerCore(object):
@@ -479,7 +486,7 @@ class OfferMakerCore(object):
                     output = self._sum_grouped_restrictions(matching_variants)
 
         full_outputs = self._get_single_value_change(form_values, output)
-        output = self._sum_restrictions([output] + full_outputs.values())
+        output = self._sum_restrictions([output] + list(full_outputs.values()))
         output = self._fill_variant_with_full_restrictions(output)
         return output
 
@@ -500,7 +507,7 @@ class OfferMakerCore(object):
 
     def offer_summary(self, fields=None):
         def restrict_fields(v):
-            for f in v.keys():
+            for f in list(v.keys()):
                 if f not in fields:
                     del v[f]
 
@@ -516,7 +523,7 @@ class OfferMakerCore(object):
         merged_groups = reduce(reduce_merge_groups, groups)
         varianted_groups = list(OfferMakerCore._items_to_variants(merged_groups))
         self._fill_variants_with_full_restrictions(varianted_groups)
-        return sorted(varianted_groups, cmp=RestrictionSet.fields_cmp(fields))
+        return sorted(varianted_groups, key=RestrictionSet.fields_sorted_key(fields))
 
     def get_conflicts(self):
         groups_full_restrictions = OfferMakerCore._get_flatten_groups(self.offer)

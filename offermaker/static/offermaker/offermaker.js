@@ -353,9 +353,10 @@
             loader_on();
             $.ajax({
                 url: document.location.pathname,
+                type: 'POST',
                 dataType: 'json',
                 data: prepared_data,
-                headers: {'X_OFFER_FORM_XHR': '1'},
+                headers: {'X-OFFER-FORM-XHR': '1'},
                 success : [function (data) {
                     var i,
                         ALL;
