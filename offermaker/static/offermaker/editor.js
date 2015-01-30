@@ -377,35 +377,28 @@
     };
 
     window.offermaker.editor = function (field) {
-        var $input,
-            $editor_panel,
-            offer,
-            fields_conf,
-            $field_panel,
-            global_params,
+        var $input = $('input[name=' + field + ']'),
+            $editor_panel = $('#' + field + '_panel'),
+            $field_panel = $editor_panel.parents('.field-' + field),
+            fields_panel = $('#' + field + '_fields'),
+            total_fields = $(':input', fields_panel).length,
+
+            offer_raw = JSON.parse($input.val()),
+            offer = $.isEmptyObject(offer_raw) ? {variants: [], params: {}} : offer_raw,
+
+            fields_conf = get_fields_conf(fields_panel, field),
+            fields_order = get_fields_order(fields_panel, field),
+            global_params = get_global_params(fields_conf, get_params_in_variants(offer)),
+
             offer_encoder,
             field_factory,
-            fields_order,
             group_column_operation_factory,
             variant_factory,
             selector_panel_factory,
-            table_factory,
-            fields_panel = $('#' + field + '_fields'),
-            total_fields;
-
-
-        $input = $('input[name=' + field + ']');
-        $editor_panel = $('#' + field + '_panel');
-
-        offer = JSON.parse($input.val());
-        offer = $.isEmptyObject(offer) ? {variants: [], params: {}} : offer;
-        fields_conf = get_fields_conf(fields_panel, field);
-        fields_order = get_fields_order(fields_panel, field);
-        total_fields = $(':input', fields_panel).length
-        global_params = get_global_params(fields_conf, get_params_in_variants(offer));
+            table_factory;
 
         offer_encoder = function () {
-            // modyfikacja offer
+            // updating offer field value
             var field_name,
                 field_value,
                 new_global_params = {},
@@ -771,7 +764,6 @@
             $editor_panel.append($add_group_link);
         })();
 
-        $field_panel = $editor_panel.parents('.field-' + field);
         if ($field_panel.hasClass('errors')) {
             $('.errorlist li', $field_panel).each(function () {
                 var $this = $(this),
