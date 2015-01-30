@@ -569,22 +569,33 @@
         group_column_operation_factory = function (operation, group, param) {
             var $table = $editor_panel.find('.group_' + group + ' table'),
                 trs,
-                last_index;
+                last_index,
+                current_order,
+                new_index = 0;
             if (operation === 'add') {
                 trs = $table.find('tr');
                 last_index = trs.length - 1;
+
+                current_order = $('th', $table).map(function() { return $(this).attr('data-field'); })
+                for (; new_index < current_order.length; new_index++) {
+                    if (fields_order[current_order[new_index]] > fields_order[param]) {
+                        break;
+                    }
+                }
+
                 trs.each(function (index) {
                     var $cell,
                         $row = $(this);
                     if (index === last_index) {
                         return undefined;
                     }
-
                     if (index === 0) {
-                        get_th_field(param, fields_conf, field).insertBefore($('th:last', $row));
+                        $cell = get_th_field(param, fields_conf, field);
+                        $cell.insertBefore($('th', $row)[new_index]);
                     } else {
+                        $('td[' + new_index + ']', $row)
                         $cell = field_factory(param, group + '-' + String(index - 1) + '__' + param, undefined, true);
-                        $cell.insertBefore($('td:last', $row));
+                        $cell.insertBefore($('td', $row)[new_index]);
                     }
                 });
                 remove_selected_field(param, $editor_panel);
@@ -687,6 +698,16 @@
 
             if (variants.length === 0) { return; }
             params = get_params_for_group(variants);
+            params.sort(function(a, b) {
+                var a0 = fields_order[a], b0 = fields_order[b];
+                if (a0 < b0) {
+                    return -1;
+                } else if (a0 > b0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            });
 
             $panel = $('<div class="group_' + group + '" class="offermaker_group_panel">');
             $panel.append(selector_panel_factory(group, params));
