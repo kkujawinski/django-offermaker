@@ -5,7 +5,7 @@ Offer Maker
 Changelog
 ---------
 
-* 0.9.6
+* 0.9.7
 
     * Added Class Based View for offermaker form
     * Added decide() method
