@@ -5,14 +5,20 @@ Offer Maker
 Changelog
 ---------
 
-- 0.9.5
+* 0.9.6
 
-    1. Small bug fixes
+    * Added Class Based View for offermaker form
+    * Added decide() method
 
-- 0.9.4
+* 0.9.5
 
-    1. Django 1.7 support
-    2. Python 3 support
+    * Small bug fixes
+
+* 0.9.4
+
+    * Django 1.7 support
+    * Python 3 support
+
 
 
 Demo application
@@ -163,12 +169,16 @@ b) Create your own Admin Site for model::
     core_object = offermaker.OfferMakerCore(MyForm, offer)
 
     result = core_object.decide({'crediting_period': 24})
-    print(result['product'].items)  # frozenset({'PROD1', 'PROD3'})
-    print(result['interest_rate'].ranges)  # frozenset({(4, 4), (5, 5), (2, 2)})
-    print(result['contribution'].ranges)  # frozenset({(10, 20), (30, 70)})
+    print(result['product'].items)
+    # frozenset({'PROD1', 'PROD3'})
+    print(result['interest_rate'].ranges)
+    # frozenset({(4, 4), (5, 5), (2, 2)})
+    print(result['contribution'].ranges)
+    # frozenset({(10, 20), (30, 70)})
 
     result = core_object.decide({'crediting_period': 24, 'interest_rate': 2})
-    print(result['product'].fixed)  # PROD1
+    print(result['product'].fixed)
+    # PROD1
 
 
 
