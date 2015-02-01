@@ -468,7 +468,13 @@ class OfferMakerCore(object):
         self.full_params = {}
         self._configure(deepcopy(offer))
 
-    def process(self, values, initiator=None, break_variant=False):
+    def decide(self, values):
+        return self.process(
+            values,
+            single_value_change=False
+        )
+
+    def process(self, values, initiator=None, break_variant=False, single_value_change=True):
         form_values = self.clean_form_values(values)
         original_form_values = copy(form_values)
 
@@ -488,9 +494,10 @@ class OfferMakerCore(object):
                     matching_variants = OfferMakerCore._get_matching_variants(self.offer, form_values)
                     output = self._sum_grouped_restrictions(matching_variants)
 
-        full_outputs = self._get_single_value_change(form_values, output)
-        output = self._sum_restrictions([output] + list(full_outputs.values()))
-        output = self._fill_variant_with_full_restrictions(output)
+        if single_value_change:
+            full_outputs = self._get_single_value_change(form_values, output)
+            output = self._sum_restrictions([output] + list(full_outputs.values()))
+            output = self._fill_variant_with_full_restrictions(output)
         return output
 
     def clean_form_values(self, form_values):

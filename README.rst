@@ -127,7 +127,7 @@ b) Initialize offerform in template ::
 a) Pass offerform object from view to template::
 
     def my_form_view(request):
-        core_object = offermaker.OfferMakerCore(DemoOfferMakerForm, offer)
+        core_object = offermaker.OfferMakerCore(MyForm, offer)
 
 b) Use proper template tag in template to print table::
 
@@ -158,6 +158,19 @@ b) Create your own Admin Site for model::
 
     admin.site.register(models.Offer, OfferAdmin)
 
+7. Decision-making tool::
+
+    core_object = offermaker.OfferMakerCore(MyForm, offer)
+
+    result = core_object.decide({'crediting_period': 24})
+    print(result['product'].items)  # frozenset({'PROD1', 'PROD3'})
+    print(result['interest_rate'].ranges)  # frozenset({(4, 4), (5, 5), (2, 2)})
+    print(result['contribution'].ranges)  # frozenset({(10, 20), (30, 70)})
+
+    result = core_object.decide({'crediting_period': 24, 'interest_rate': 2})
+    print(result['product'].fixed)  # PROD1
+
+
 
 Basic customization
 -------------------
@@ -167,7 +180,7 @@ Basic customization
 a) you need to pass proper offer object to Offermaker in form/preview view::
 
     offer = MyOffer.objects.filter(id=request.GET['id']).first()
-    core_object = offermaker.OfferMakerCore(DemoOfferMakerForm, offer.offer)
+    core_object = offermaker.OfferMakerCore(MyForm, offer.offer)
 
 b) and configure proper params to be used ajax requests::
 
