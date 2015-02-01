@@ -90,19 +90,12 @@ a) Use dispatcher code in Django view ::
 
     import offermaker
 
-    def my_form_view(request):
-        core_object = offermaker.OfferMakerCore(DemoOfferMakerForm, offer)
+    class MyOfferFormView(offermaker.OfferMakerFormView):
+        form_class = MyForm
+        offermaker_offer = offer
+        template_name = 'my_offer_form_view.html'
 
-        def handler_get(form):
-            return render(request, 'my_form.html', ({'form': form})
-
-        def handler_post(form):
-            if form.is_valid():
-                return HttpResponseRedirect('success')
-            return handler_get(form)
-
-        dispatcher = offermaker.OfferMakerDispatcher.from_core_object(handler_get, handler_post, core_object=core_object)
-        return dispatcher.handle_request(request)
+    my_offer_form_view = MyOfferFormView.as_view()
 
 
 b) Initialize offerform in template ::
