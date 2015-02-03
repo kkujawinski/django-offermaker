@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 __author__ = 'kamil'
-from unittest2 import TestCase
+from unittest import TestCase
 
 from offermaker.core import OfferMakerCore, Restriction, NoMatchingVariantsException
 

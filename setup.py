@@ -1,10 +1,51 @@
 import os
+
 from setuptools import setup
+from setuptools import Command
 
 README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
+
+
+class TestCommand(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        self.distribution.fetch_build_eggs(self.distribution.tests_require)
+        try:
+            from unittest import TestCase
+            TestCase.assertRaisesRegexp
+        except AttributeError:
+            self.distribution.fetch_build_eggs(['unittest2'])
+            import sys
+            sys.modules['unittest'] = __import__('unittest2')
+
+        from django.conf import settings
+        settings.configure(
+            DATABASES={
+                'default': {
+                    'NAME': ':memory:',
+                    'ENGINE': 'django.db.backends.sqlite3'
+                }
+            },
+            INSTALLED_APPS=('jsonfield', 'offermaker')
+        )
+        from django.core.management import call_command
+        import django
+
+        if django.VERSION[:2] >= (1, 7):
+            django.setup()
+
+        call_command('test', 'offermaker')
+
 
 setup(
     name='django-offermaker',
@@ -21,9 +62,11 @@ setup(
         'jsonfield>=1.0.0',
     ],
     tests_require=[
-        'unittest2',
+        'django>=1.5',
+        'jsonfield>=1.0.0',
     ],
     test_suite="tests",
+    cmdclass={'test': TestCommand},
     zip_safe=False,
     classifiers=[
         'Environment :: Web Environment',

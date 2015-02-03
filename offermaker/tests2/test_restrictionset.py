@@ -1,9 +1,6 @@
 __author__ = 'kamil'
 from functools import partial
-from unittest2 import TestCase
-
-from django.conf import settings
-settings.configure()
+from unittest import TestCase
 
 from offermaker.core import Restriction, RestrictionSet
 

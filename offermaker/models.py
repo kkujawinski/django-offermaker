@@ -24,17 +24,17 @@ class OfferMakerWidget(forms.Widget):
         def render_widget_for_field(field_name, field):
             if hasattr(field, 'choices'):
                 return select_widget.render(
-                    '%s__%s' % (name, field_name), '',
+                    '{0}__{1}'.format(name, field_name), '',
                     choices=field.choices
                 )
             else:
-                return field.widget.render('%s__%s' % (name, field_name), '')
+                return field.widget.render('{0}__{1}'.format(name, field_name), '')
 
         def js_tag(path):
-            return u'<script src="%s" type="text/javascript"></script>' % static(path)
+            return '<script src="{0}" type="text/javascript"></script>'.format(static(path))
 
         def css_tag(path):
-            return u'<link rel="stylesheet" href="%s" type="text/css" />' % static(path)
+            return '<link rel="stylesheet" href="{0}" type="text/css" />'.format(static(path))
 
         form_fields = self.attrs['form_object'].fields
         fields = [render_widget_for_field(field_name, field) for field_name, field in form_fields.items()]
@@ -42,23 +42,23 @@ class OfferMakerWidget(forms.Widget):
         value = value if isinstance(value, six.string_types) else json.dumps(value)
 
         field_labels_json = ', '.join([
-            '%s: "%s"' % (field_name, force_text(field.label))
+            '{0}: "{1}"'.format(field_name, force_text(field.label))
             for field_name, field in form_fields.items()
         ])
 
         output = [forms.HiddenInput().render(name, value),
-                  u'<ul class="editor-instructions">',
-                  u'<li>Only already tagged values are saved. Use TAB or ENTER to convert.</li>',
-                  u'<li>Use ":" as range values link, ex. 1:2.</li>',
-                  u'<li>No value at the beginning or the end of the range means minus infinity or '
-                  u'plus infinity, ex. :2, 3:)</li></ul>',
-                  u'<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '%s_fields' % name}),
+                  '<ul class="editor-instructions">',
+                  '<li>Only already tagged values are saved. Use TAB or ENTER to convert.</li>',
+                  '<li>Use ":" as range values link, ex. 1:2.</li>',
+                  '<li>No value at the beginning or the end of the range means minus infinity or '
+                  'plus infinity, ex. :2, 3:)</li></ul>',
+                  '<div{0}>{1}</div>'.format(flatatt({'style': 'display: none;', 'id': '{0}_fields'.format(name)}),
                                               ''.join(fields)),
-                  u'<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
-                                                             'id': '%s_panel' % name})),
-                  u'<script type="text/javascript">',
-                  u'window.jQuery = window.jQuery || django.jQuery;',
-                  u'</script>',
+                  '<div{0}></div>'.format(flatatt({'class': 'offermaker_panel',
+                                                             'id': '{0}_panel'.format(name)})),
+                  '<script type="text/javascript">',
+                  'window.jQuery = window.jQuery || django.jQuery;',
+                  '</script>',
 
                   css_tag("offermaker/editor.css"),
                   css_tag("offermaker/jquery-ui.min.css"),
@@ -68,11 +68,11 @@ class OfferMakerWidget(forms.Widget):
                   js_tag("offermaker/bootstrap-tokenfield.min.js"),
                   js_tag("offermaker/editor.js"),
 
-                  u'<script type="text/javascript">' +
-                  u'offermaker.labels = offermaker.labels || {}; ' +
-                  u'offermaker.labels.%s = { %s }; ' % (name, field_labels_json) +
-                  u'offermaker.editor("%s"); ' % name +
-                  u'</script>',
+                  '<script type="text/javascript">' +
+                  'offermaker.labels = offermaker.labels || {}; ' +
+                  'offermaker.labels.{0} = { {1} }; '.format(name, field_labels_json) +
+                  'offermaker.editor("{0}"); '.format(name) +
+                  '</script>',
                   ]
         return mark_safe('\n'.join(output))
 

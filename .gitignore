@@ -3,6 +3,7 @@
 .idea/
 *.pyc
 dist
-unittest*.egg
+.tox/
+*.egg
+.eggs/
 django_offermaker.egg-info
-django_offer_maker.egg-info

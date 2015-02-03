@@ -19,11 +19,11 @@ def offermaker_javascript(skip=''):
     if 'sprintf' not in skip:
         url = static('offermaker/sprintf.min.js')
         if url:
-            output.append(u'<script src="%s"></script>' % url)
+            output.append(u'<script src="{0}"></script>'.format(url))
 
     url = static('offermaker/offermaker.js')
     if url:
-        output.append(u'<script src="%s"></script>' % url)
+        output.append(u'<script src="{0}"></script>'.format(url))
 
     return u''.join(output)
 
@@ -35,7 +35,7 @@ def offermaker_css():
     """
     url = static('offermaker/offermaker.css')
     if url:
-        return u'<link rel="stylesheet" href="%s">' % url
+        return u'<link rel="stylesheet" href="{0}">'.format(url)
     return u''
 
 @register.simple_tag
@@ -49,9 +49,9 @@ def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, **att
     def _format_attrs(attrs):
         if not attrs:
             return ''
-        return ' ' + ' '.join('%s="%s"' % (k, str(v)) for k, v in attrs.items())
+        return ' ' + ' '.join('{0}="{1}"'.format(k, str(v)) for k, v in attrs.items())
 
-    _format_tag_item = lambda tag: '<%s%s>' % (tag.tag, _format_attrs(tag.attrs)) if isinstance(tag, HtmlTag) else tag
+    _format_tag_item = lambda tag: '<{0}{1}>'.format(tag.tag, _format_attrs(tag.attrs)) if isinstance(tag, HtmlTag) else tag
 
     object_fields = core_object.form_object.fields
     if fields:

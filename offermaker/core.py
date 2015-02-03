@@ -36,7 +36,7 @@ class Range(tuple):
     @staticmethod
     def _validate_range_restriction(restriction):
         if len(restriction) != 2:
-            raise RangeException(u"Range restriction must be two element tuple, but %s isn't" % str(restriction))
+            raise RangeException("Range restriction must be two element tuple, but {0} isn't".format(str(restriction)))
         else:
             restriction_is_none = [restriction[0] is None, restriction[1] is None]
             if all(restriction_is_none):
@@ -44,11 +44,11 @@ class Range(tuple):
                 pass
             elif not any(restriction_is_none):
                 if not all(isinstance(x, six.integer_types + (float,)) for x in restriction):
-                    raise RangeException(u"Both side of range restriction must be numeric, "
-                                         u"but %s isn't" % str(restriction))
+                    raise RangeException("Both side of range restriction must be numeric, "
+                                         "but {0} isn't".format(str(restriction)))
                 if restriction[0] > restriction[1]:
-                    raise RangeException(u"Left side must smaller the right in range restriction, "
-                                         u"but %s isn't" % str(restriction))
+                    raise RangeException("Left side must smaller the right in range restriction, "
+                                         "but {0} isn't".format(str(restriction)))
 
     @staticmethod
     def sets_sum(sets):
@@ -130,7 +130,7 @@ class Range(tuple):
     def __str__(self):
         x = '' if self[0] == -float("inf") else self[0]
         y = '' if self[1] == float("inf") else self[1]
-        return '%s - %s' % (x, y)
+        return '{0} - {1}'.format(x, y)
 
 
 class RestrictionSet(dict):
@@ -267,19 +267,19 @@ class Restriction(object):
         self.fixed = None
 
         if restriction in (None, [], ()):
-            raise Exception(u"Empty restrictions is not allowed, but it's defined for %s" % field)
+            raise Exception("Empty restrictions is not allowed, but it's defined for {0}".format(field))
 
         if isinstance(restriction, tuple):
             self.ranges = frozenset([Range(restriction)])
         elif isinstance(restriction, (list, set, frozenset)):
             list_of_tuples = [isinstance(r, (tuple, list)) for r in restriction]
             if any(list_of_tuples) and not all(list_of_tuples):
-                raise Exception(u"Can't mix range restriction with items restriction, unlike %s" % str(restriction))
+                raise Exception("Can't mix range restriction with items restriction, unlike {0}".format(str(restriction)))
             if all(list_of_tuples):
                 self.ranges = frozenset(Range(x) for x in restriction)
             else:
                 if not Restriction.has_restriction_the_same_types(restriction):
-                    raise Exception(u"All items in restriction must have same type, but %s isn't" % str(restriction))
+                    raise Exception("All items in restriction must have same type, but {0} isn't".format(str(restriction)))
                 if len(restriction) == 1:
                     self.fixed = next(iter(restriction))
                 else:
@@ -316,11 +316,11 @@ class Restriction(object):
 
     def __add__(self, other):
         if self.field != other.field:
-            raise Exception(u"You can add only restrictions of the same field, you trying "
-                            u"add %s to %s" % (self.field, other.field))
+            raise Exception("You can add only restrictions of the same field, you trying "
+                            "add {0} to {1}".format(self.field, other.field))
         if (self.ranges and not other.ranges) or (not self.ranges and other.ranges):
-            raise Exception(u"Range restriction can be added only to other range restriction, "
-                            u"unlike in '%s'" % self.field)
+            raise Exception("Range restriction can be added only to other range restriction, "
+                            "unlike in '{0}'".format(self.field))
 
         # if one is range restriction, both are
         if self.ranges:
@@ -340,11 +340,11 @@ class Restriction(object):
 
     def __sub__(self, other):
         if self.field != other.field:
-            raise Exception(u"You can add only restrictions of the same field, you trying "
-                            u"add %s to %s" % (self.field, other.field))
+            raise Exception("You can add only restrictions of the same field, you trying "
+                            "add {0} to {1}".format(self.field, other.field))
         if (self.ranges and not other.ranges) or (not self.ranges and other.ranges):
-            raise Exception(u"Range restriction can be added only to other range restriction, "
-                            u"unlike in '%s'" % self.field)
+            raise Exception("Range restriction can be added only to other range restriction, "
+                            "unlike in '{0}'".format(self.field))
         # if one is range restriction, both are
         if self.ranges:
             ranges = frozenset(Range.sets_diff(self.ranges, other.ranges))
@@ -362,11 +362,11 @@ class Restriction(object):
 
     def __mul__(self, other):
         if self.field != other.field:
-            raise Exception(u"You can multiply only restrictions of the same field, you trying "
-                            u"multiply %s with %s" % (self.field, other.field))
+            raise Exception("You can multiply only restrictions of the same field, you trying "
+                            "multiply {0} with {1}".format(self.field, other.field))
         if (self.ranges and not other.ranges) or (not self.ranges and other.ranges):
-            raise Exception(u"Range restriction can be multiplied only to other range restriction, "
-                            u"unlike in '%s'" % self.field)
+            raise Exception("Range restriction can be multiplied only to other range restriction, "
+                            "unlike in '{0}'".format(self.field))
 
         if self.ranges:
             ranges = frozenset(Range.sets_product((self.ranges, other.ranges)))
@@ -399,11 +399,11 @@ class Restriction(object):
     def __repr__(self):
         output = []
         if self.ranges:
-            output.append('ranges: %s' % repr(self.ranges))
+            output.append('ranges: {0}'.format(repr(self.ranges)))
         if self.items:
-            output.append('x in %s' % self.items)
+            output.append('x in {0}'.format(self.items))
         if self.fixed:
-            output.append('x = %s' % repr(self.fixed))
+            output.append('x = {0}'.format(repr(self.fixed)))
         return ', '.join(output)
 
     def format_str(self, object_fields=None):
@@ -420,10 +420,10 @@ class Restriction(object):
         if self.fixed:
             return str(formatter(self.fixed))
         if self.ranges:
-            return u', '.join(str(r) for r in sorted(self.ranges))
+            return ', '.join(str(r) for r in sorted(self.ranges))
         if self.items:
-            return u', '.join(str(formatter(r)) for r in sorted(self.items))
-        return u''
+            return ', '.join(str(formatter(r)) for r in sorted(self.items))
+        return ''
 
     def __str__(self):
         return self.format_str()
@@ -558,7 +558,7 @@ class OfferMakerCore(object):
                     if not any_matched:
                         conflicted_groups.append(str(gj))
                 if conflicted_groups:
-                    output['%s-%s' % (gi, vi)] = conflicted_groups
+                    output['{0}-{1}'.format(gi, vi)] = conflicted_groups
         return output
 
     def _configure(self, offer):
@@ -718,7 +718,7 @@ class OfferMakerCore(object):
                     subvariant_params, subvariant_subvariants = OfferMakerCore._get_variants_groups(subvariant)
                     if subvariant_subvariants:
                         for k, v in subvariant_subvariants.items():
-                            subvariants['%d-%s' % (i, k)] = v
+                            subvariants['{0}-{1}'.format(i, k)] = v
                             group_params.update(v)
                     group_params.update(set(subvariant_params))
                 subvariants[str(i)] = group_params
