@@ -1,7 +1,7 @@
-from collections import defaultdict
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-__author__ = 'kamil'
-from unittest import TestCase
+from django.test import TestCase
 
 from offermaker.core import OfferMakerCore, Restriction, NoMatchingVariantsException
 

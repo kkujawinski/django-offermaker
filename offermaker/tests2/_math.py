@@ -1,5 +1,8 @@
-__author__ = 'kamil'
-from unittest import TestCase
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+from django.test import TestCase
+
 from offermaker.core import Restriction, Range
 
 

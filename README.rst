@@ -21,6 +21,13 @@ Changelog
 
 
 
+Support
+-------
+
+* Environments: Python 2.6, Python 2.7, Python 3.2, Python 3.3, Python 3.4, PyPy,
+* Django versions: Django 1.5, Django 1.6, Django 1.7 (Python 2.6 is not supported),
+
+
 Demo application
 ----------------
 
@@ -50,16 +57,16 @@ Quick start
 
     class MyForm(forms.Form):
         product = forms.ChoiceField(
-            label=u'Product',
+            label='Product',
             choices=(
                 ('', '---'), ('PROD1', 'Product X'), ('PROD2', 'Product Y'), ('PROD3', 'Product Z'),
             ),
             required=False)
         crediting_period = forms.ChoiceField(
-            label=u'Crediting period',
+            label='Crediting period',
             choices=(('', '---'), ('12', '12'), ('24', '24'), ('36', '36'), ('48', '48')))
-        interest_rate = forms.FloatField(label=u'Interest rate', min_value=1, max_value=5)
-        contribution = forms.FloatField(label=u'Contribution', min_value=0)
+        interest_rate = forms.FloatField(label='Interest rate', min_value=1, max_value=5)
+        contribution = forms.FloatField(label='Contribution', min_value=0)
 
 4. Define your offer (in case you do not store it in database)::
 
@@ -132,8 +139,14 @@ b) Initialize offerform in template ::
 
 a) Pass offerform object from view to template::
 
-    def my_form_view(request):
-        core_object = offermaker.OfferMakerCore(MyForm, offer)
+    class MyOfferPreviewView(TemplateView):
+        template_name = 'offer_preview.html'
+
+        def get_context_data(self):
+            output = super(MyOfferPreviewView, self).get_context_data()
+            output['offer'] = offermaker.OfferMakerCore(MyForm, offer)
+            return output
+
 
 b) Use proper template tag in template to print table::
 

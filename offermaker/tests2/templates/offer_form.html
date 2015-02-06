@@ -1,0 +1,19 @@
+<html>
+<head>
+    {% load offermaker %}
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    {% offermaker_javascript %}
+</head>
+<body>
+    <form action="?" method="post" id="offer_form">
+        <div class="alert-placeholder" style="height: 30px;"></div>
+        {{ form.as_p }}
+        <button type="submit">Submit</button>
+    </form>
+    <script type="text/javascript">
+        (function() {
+            $('#offer_form').offer_form();
+        })();
+    </script>
+</body>
+</html>

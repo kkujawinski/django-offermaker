@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 from collections import namedtuple
 
 from django import template
@@ -19,13 +22,13 @@ def offermaker_javascript(skip=''):
     if 'sprintf' not in skip:
         url = static('offermaker/sprintf.min.js')
         if url:
-            output.append(u'<script src="{0}"></script>'.format(url))
+            output.append('<script src="{0}"></script>'.format(url))
 
     url = static('offermaker/offermaker.js')
     if url:
-        output.append(u'<script src="{0}"></script>'.format(url))
+        output.append('<script src="{0}"></script>'.format(url))
 
-    return u''.join(output)
+    return ''.join(output)
 
 
 @register.simple_tag
@@ -35,8 +38,8 @@ def offermaker_css():
     """
     url = static('offermaker/offermaker.css')
     if url:
-        return u'<link rel="stylesheet" href="{0}">'.format(url)
-    return u''
+        return '<link rel="stylesheet" href="{0}">'.format(url)
+    return ''
 
 @register.simple_tag
 def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, **attrs):
@@ -57,7 +60,7 @@ def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, **att
     if fields:
         fields = [f.strip() for f in fields.split(',')]
     else:
-        fields = core_object.form_object.fields.keys()
+        fields = list(core_object.form_object.fields.keys())
 
     summary = core_object.offer_summary(fields=fields)
     if orientation == 'HORIZONTAL':
@@ -111,4 +114,4 @@ def offermaker_preview(core_object, orientation='HORIZONTAL', fields=None, **att
 
         return ''.join(_format_tag_item(tag) for tag in output_tags)
 
-    return u'TABLE'
+    return 'TABLE'

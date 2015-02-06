@@ -1,9 +1,20 @@
-__author__ = 'kamil'
-from unittest import TestCase
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import sys
+
+from django.test import TestCase
+
 from offermaker.core import Restriction
 
 
 class OfferMakerCoreInputTest(TestCase):
+
+    def assertRaisesRegexp(self, *args, **kwargs):
+        if sys.version_info < (3, 0):
+            return super(OfferMakerCoreInputTest, self).assertRaisesRegexp(*args, **kwargs)
+        else:
+            return self.assertRaisesRegex(*args, **kwargs)
 
     def test_restriction_input_range_items_mix(self):
         self.assertRaisesRegexp(

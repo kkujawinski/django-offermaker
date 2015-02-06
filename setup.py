@@ -20,14 +20,7 @@ class TestCommand(Command):
 
     def run(self):
         self.distribution.fetch_build_eggs(self.distribution.tests_require)
-        try:
-            from unittest import TestCase
-            TestCase.assertRaisesRegexp
-        except AttributeError:
-            self.distribution.fetch_build_eggs(['unittest2'])
-            import sys
-            sys.modules['unittest'] = __import__('unittest2')
-
+        from django.utils._os import upath
         from django.conf import settings
         settings.configure(
             DATABASES={
@@ -36,7 +29,16 @@ class TestCommand(Command):
                     'ENGINE': 'django.db.backends.sqlite3'
                 }
             },
-            INSTALLED_APPS=('jsonfield', 'offermaker')
+            INSTALLED_APPS=('jsonfield', 'offermaker'),
+            MIDDLEWARE_CLASSES = (
+                'django.middleware.common.CommonMiddleware',
+            ),
+            TEMPLATE_DIRS=(
+                os.path.join(os.path.dirname(upath(__file__)), 'offermaker', 'tests2', 'templates'),
+            ),
+            ROOT_URLCONF='',
+            STATIC_URL='/static/',
+
         )
         from django.core.management import call_command
         import django
