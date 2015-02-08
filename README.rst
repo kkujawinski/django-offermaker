@@ -1,9 +1,40 @@
-===========
-Offer Maker
-===========
+=================
+Django OfferMaker
+=================
+
+``django-offermaker`` library is a solution for Django applications, which allows
+to create *multi variant offers* and use them on your site.
+
+*Multi variant offer* is a structure which defines dependencies between values for
+given set of fields.
+
+Eg. for the fields **credit contribution** and **number of instalments** we
+have the following dependencies:
+
+    * for **0%** credit contribution, it is required to have maximum **12**
+      instalments,
+    * for **10%+** contribution, it is allowed to have **12-24** instalments,
+    * and for **20%+** contribution, it is allowed to have **12-36** instalments.
+
+Functions of ``django-offermaker``
+----------------------------------
+
+    * Create and edit *multi variant offer* by using **Offermaker Admin Editor**.
+    * Display *multi variant offer* in tabular way by using **Offermaker Template
+      Tag**.
+    * Display form which dynamically adjusts to user filled values based on
+      *multi variant offer* by using **OfferMakerFormView Generic View**.
+    * Make decision which variant of *multi variant offer* is suitable for
+      given parameters by using **decide helper**.
+
 
 Changelog
 ---------
+
+* 0.9.8
+
+    * Selenium test for offermaker admin editor and offermaker form and bug fixes
+      in supported Django and Python versions.
 
 * 0.9.7
 
@@ -51,7 +82,7 @@ Quick start
           'offermaker',
       )
 
-3. Create Django form::
+3. Create Django form with needed fields::
 
     from django import forms
 
@@ -80,30 +111,44 @@ Quick start
 4. Define your offer (in case you do not store it in database)::
 
     offer = {
-        'variants': [
-            [{
-                'params': {'product': 'PROD1', 'crediting_period': ['24']},
+        'params': {},
+        'variants': [[
+            {
+                'params': {
+                    'crediting_period': ['24'],
+                    'product': ['PROD1']
+                }
             }, {
-                'params': {'product': 'PROD2'},
-                'variants': [
-                    {'params': {'crediting_period': ['12']}},
-                    {'params': {'crediting_period': ['36']}},
-                    {'params': {'crediting_period': ['48']}}]
+                'params': {
+                    'crediting_period': ['12', '36', '48'],
+                    'product': ['PROD2']
+                }
             }, {
-                'params': {'product': 'PROD3'},
-            }],
-            [{
-                'params': {'product': 'PROD1'},
-                'variants': [
-                    {'params': {'contribution': (10, 20), 'interest_rate': (2, 2)}},
-                    {'params': {'contribution': (30, 40), 'interest_rate': (4, 4)}}]
+                'params': {
+                    'product': ['PROD3']
+                }
+            }
+        ], [
+            {
+                'params': {
+                    'contribution': [[10, 20]],
+                    'interest_rate': [[2, 2]],
+                    'product': ['PROD1']
+                }
             }, {
-                'params': {'product': ['PROD2', 'PROD3']},
-                'variants': [{
-                    'params': {'contribution': (30, 70), 'interest_rate': (5, 5)}
-                }]
-            }]
-        ]
+                'params': {
+                    'contribution': [[30, 40]],
+                    'interest_rate': [[4, 4]],
+                    'product': ['PROD1']
+                }
+            }, {
+                'params': {
+                    'contribution': [[30, 70]],
+                    'interest_rate': [[5, 5]],
+                    'product': ['PROD2', 'PROD3']
+                }
+            }
+        ]]
     }
 
 5. Offer form:
@@ -144,9 +189,9 @@ b) Initialize offerform in template ::
         })();
     </script>
 
-6. Offer preview:
+6. Offer preview with Offermaker Template Tag
 
-a) Pass offerform object from view to template::
+a) Pass offer form object from view to template::
 
     class MyOfferPreviewView(TemplateView):
         template_name = 'offer_preview.html'
@@ -164,7 +209,7 @@ b) Use proper template tag in template to print table::
     {% offermaker_preview offer %}
 
 
-7. Offer editor:
+7. Offermaker Admin Editor:
 
 a) Use OfferJSONField field in your model. Remember to pass your django form created in 3.::
 
@@ -194,7 +239,7 @@ b) Create your own Admin Site for model::
 
     admin.site.register(models.Offer, OfferAdmin)
 
-7. Decision-making tool::
+7. Decide helper::
 
     core_object = offermaker.OfferMakerCore(MyForm, offer)
 
@@ -222,7 +267,7 @@ a) you need to pass proper offer object to Offermaker in form/preview view::
     offer = MyOffer.objects.filter(id=request.GET['id']).first()
     core_object = offermaker.OfferMakerCore(MyForm, offer.offer)
 
-b) and configure proper params to be used ajax requests::
+b) and configure proper params to be used in ajax requests::
 
     $('#offer_form').offer_form({
         ajax_extra_params: function(params) {
@@ -281,33 +326,3 @@ b) and configure proper params to be used ajax requests::
 6. Add html attributes to generated preview table::
 
     {% offermaker_preview offer class='table table-bordered' %}
-
-
-Troubleshooting
----------------
-
-1. I run Django 1.5 and I have jQuery older than 1.9.
-
-You need to add new jQuery library dependency in you django admin site::
-
-    class OfferAdmin(admin.ModelAdmin):
-        ...
-        class Media:
-            js = ('//code.jquery.com/jquery-1.11.0.min.js',)
-
-2. I run Django 1.5 and django-offermaker doesn't recognize field types properly. 
-
-Django 1.5 admin site is not using HTML5 input types (ex. number), you can give hint 
-to django-offermaker about field type with following code::
-
-    def __init__(self, *args, **kwargs):
-        super(MyForm, self).__init__(*args, **kwargs)
-        self.fields['interest_rate'].widget.attrs['data-om-type'] = 'number'
-        self.fields['interest_rate'].widget.attrs['data-om-min'] = 1
-        self.fields['interest_rate'].widget.attrs['data-om-max'] = 5
-        self.fields['contribution'].widget.attrs['data-om-type'] = 'number'
-        self.fields['contribution'].widget.attrs['data-om-min'] = 0
-
-
-
-

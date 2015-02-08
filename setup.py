@@ -70,7 +70,7 @@ class TestCommand(Command):
 
 setup(
     name='django-offermaker',
-    version='0.9.7',
+    version='0.9.8',
     packages=['offermaker'],
     include_package_data=True,
     license='LGPL',

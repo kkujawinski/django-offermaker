@@ -10,30 +10,44 @@ from .models import MyForm
 
 
 offer = {
-    'variants': [
-        [{
-            'params': {'product': 'PROD1', 'crediting_period': ['24']},
+    'params': {},
+    'variants': [[
+        {
+            'params': {
+                'crediting_period': ['24'],
+                'product': ['PROD1']
+            }
         }, {
-            'params': {'product': 'PROD2'},
-            'variants': [
-                {'params': {'crediting_period': ['12']}},
-                {'params': {'crediting_period': ['36']}},
-                {'params': {'crediting_period': ['48']}}]
+            'params': {
+                'crediting_period': ['12', '36', '48'],
+                'product': ['PROD2']
+            }
         }, {
-            'params': {'product': 'PROD3'},
-        }],
-        [{
-            'params': {'product': 'PROD1'},
-            'variants': [
-                {'params': {'contribution': (10, 20), 'interest_rate': (2, 2)}},
-                {'params': {'contribution': (30, 40), 'interest_rate': (4, 4)}}]
+            'params': {
+                'product': ['PROD3']
+            }
+        }
+    ], [
+        {
+            'params': {
+                'contribution': [[10, 20]],
+                'interest_rate': [[2, 2]],
+                'product': ['PROD1']
+            }
         }, {
-            'params': {'product': ['PROD2', 'PROD3']},
-            'variants': [{
-                'params': {'contribution': (30, 70), 'interest_rate': (5, 5)}
-            }]
-        }]
-    ]
+            'params': {
+                'contribution': [[30, 40]],
+                'interest_rate': [[4, 4]],
+                'product': ['PROD1']
+            }
+        }, {
+            'params': {
+                'contribution': [[30, 70]],
+                'interest_rate': [[5, 5]],
+                'product': ['PROD2', 'PROD3']
+            }
+        }
+    ]]
 }
 
 
