@@ -29,17 +29,36 @@ class TestCommand(Command):
                     'ENGINE': 'django.db.backends.sqlite3'
                 }
             },
-            INSTALLED_APPS=('jsonfield', 'offermaker'),
+            INSTALLED_APPS=(
+                'django.contrib.admin',
+                'django.contrib.auth',
+                'django.contrib.contenttypes',
+                'django.contrib.sessions',
+                'jsonfield',
+                'offermaker',
+                'offermaker.tests2',
+            ),
+            TEMPLATE_CONTEXT_PROCESSORS = (
+                'django.contrib.auth.context_processors.auth',
+            ),
             MIDDLEWARE_CLASSES = (
+                'django.contrib.sessions.middleware.SessionMiddleware',
                 'django.middleware.common.CommonMiddleware',
+                'django.contrib.auth.middleware.AuthenticationMiddleware',
+                'django.contrib.messages.middleware.MessageMiddleware',
             ),
             TEMPLATE_DIRS=(
                 os.path.join(os.path.dirname(upath(__file__)), 'offermaker', 'tests2', 'templates'),
             ),
-            ROOT_URLCONF='',
+            TEMPLATE_LOADERS = (
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+                'django.template.loaders.eggs.Loader',
+            ),
             STATIC_URL='/static/',
-
+            ROOT_URLCONF='',
         )
+
         from django.core.management import call_command
         import django
 
@@ -66,6 +85,7 @@ setup(
     tests_require=[
         'django>=1.5',
         'jsonfield>=1.0.0',
+        'selenium',
     ],
     test_suite="tests",
     cmdclass={'test': TestCommand},

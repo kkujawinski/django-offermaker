@@ -68,6 +68,15 @@ Quick start
         interest_rate = forms.FloatField(label='Interest rate', min_value=1, max_value=5)
         contribution = forms.FloatField(label='Contribution', min_value=0)
 
+        # # Uncomment for Django 1.5
+        # def __init__(self, *args, **kwargs):
+        #     super(MyForm, self).__init__(*args, **kwargs)
+        #     self.fields['interest_rate'].widget.attrs['data-om-type'] = 'number'
+        #     self.fields['interest_rate'].widget.attrs['data-om-min'] = 1
+        #     self.fields['interest_rate'].widget.attrs['data-om-max'] = 5
+        #     self.fields['contribution'].widget.attrs['data-om-type'] = 'number'
+        #     self.fields['contribution'].widget.attrs['data-om-min'] = 0
+
 4. Define your offer (in case you do not store it in database)::
 
     offer = {
@@ -161,10 +170,13 @@ a) Use OfferJSONField field in your model. Remember to pass your django form cre
 
     import offermaker
 
+    class MyOfferMakerField(offermaker.OfferJSONField):
+        form_object = MyForm()
+
     class MyOffer(models.Model):
         id = models.AutoField(primary_key=True)
         name = models.CharField(max_length=30)
-        offer = offermaker.OfferJSONField(form_object=MyForm())
+        offer = MyOfferMakerField()
 
 b) Create your own Admin Site for model::
 
@@ -174,6 +186,11 @@ b) Create your own Admin Site for model::
         list_display = ('name',)
         search_fields = ('name', 'user')
         fields = ('name', 'offer')
+
+        # # Uncomment for Django 1.5
+        # class Media:
+        #     js = ('//code.jquery.com/jquery-1.11.0.min.js',)
+
 
     admin.site.register(models.Offer, OfferAdmin)
 

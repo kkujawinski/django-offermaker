@@ -70,7 +70,7 @@ class OfferMakerWidget(forms.Widget):
 
                   '<script type="text/javascript">' +
                   'offermaker.labels = offermaker.labels || {}; ' +
-                  'offermaker.labels.{0} = { {1} }; '.format(name, field_labels_json) +
+                  'offermaker.labels.{0} = {{ {1} }}; '.format(name, field_labels_json) +
                   'offermaker.editor("{0}"); '.format(name) +
                   '</script>',
                   ]

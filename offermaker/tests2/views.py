@@ -1,25 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from django import forms
 from django.http import HttpResponse
 from django.views.generic import TemplateView, View
 
 import offermaker
 
-
-class MyForm(forms.Form):
-    product = forms.ChoiceField(
-        label='Product',
-        choices=(
-            ('', '---'), ('PROD1', 'Product X'), ('PROD2', 'Product Y'), ('PROD3', 'Product Z'),
-        ),
-        required=False)
-    crediting_period = forms.ChoiceField(
-        label='Crediting period',
-        choices=(('', '---'), ('12', '12'), ('24', '24'), ('36', '36'), ('48', '48')))
-    interest_rate = forms.FloatField(label='Interest rate', min_value=1, max_value=5)
-    contribution = forms.FloatField(label='Contribution', min_value=0)
+from .models import MyForm
 
 
 offer = {
